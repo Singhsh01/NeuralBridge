@@ -1,0 +1,77 @@
+@* Modal confirmation for destructive actions. Focus moves to the safe choice; Escape cancels. *@
+@if (Open)
+{
+    <div class="dialog-backdrop" @onclick="CancelAsync"></div>
+    <div class="dialog glass" role="alertdialog" aria-modal="true" aria-labelledby="@_titleId" aria-describedby="@_bodyId" @onkeydown="OnKeyDown">
+        <h2 id="@_titleId" class="dialog-title">@Title</h2>
+        <div id="@_bodyId" class="dialog-body">@ChildContent</div>
+        <div class="dialog-actions">
+            <button type="button" class="btn btn-quiet" @ref="_cancelButton" @onclick="CancelAsync">Cancel</button>
+            <button type="button" class="btn @(Destructive ? "btn-danger" : "btn-primary")" @onclick="ConfirmAsync" disabled="@_busy">@ConfirmLabel</button>
+        </div>
+    </div>
+}
+
+@code {
+    private readonly string _titleId = $"dlg-t-{Guid.NewGuid():N}";
+    private readonly string _bodyId = $"dlg-b-{Guid.NewGuid():N}";
+    private ElementReference _cancelButton;
+    private bool _busy;
+    private bool _focusPending;
+
+    [Parameter] public bool Open { get; set; }
+
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+
+    [Parameter] public string ConfirmLabel { get; set; } = "Confirm";
+
+    [Parameter] public bool Destructive { get; set; } = true;
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    [Parameter] public EventCallback OnConfirm { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        if (Open)
+        {
+            _focusPending = true;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_focusPending && Open)
+        {
+            _focusPending = false;
+            try
+            {
+                await _cancelButton.FocusAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+            }
+        }
+    }
+
+    private async Task ConfirmAsync()
+    {
+        _busy = true;
+        try
+        {
+            await OnConfirm.InvokeAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
+
+        await OpenChanged.InvokeAsync(false);
+    }
+
+    private Task CancelAsync() => OpenChanged.InvokeAsync(false);
+
+    private Task OnKeyDown(KeyboardEventArgs e) => e.Key == "Escape" ? CancelAsync() : Task.CompletedTask;
+}

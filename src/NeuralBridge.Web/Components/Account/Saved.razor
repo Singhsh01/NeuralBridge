@@ -1,0 +1,85 @@
+@page "/account/saved"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using NeuralBridge.Web.Auth
+@attribute [Authorize]
+@inject ISnippetService Snippets
+@inject AuthenticationStateProvider AuthenticationState
+@inject ToastService Toasts
+
+<PageTitle>Saved text · NeuralBridge</PageTitle>
+
+<div class="page-wide">
+    <ToastRegion />
+    <h1 class="page-title with-icon"><Icon Name="bookmark" /> Saved text</h1>
+    <p class="page-lede">Text you chose to keep from a session. Nothing appears here unless you click <em>Save</em> in a session.</p>
+
+    @if (!_loaded)
+    {
+        <Spinner Label="Loading saved text" ShowLabel="true" />
+    }
+    else if (_snippets.Count == 0)
+    {
+        <EmptyState Title="Nothing saved yet" IconName="bookmark" Class="card glass">
+            <ChildContent><p>In a session, click <em>Save</em> to keep a copy here.</p></ChildContent>
+        </EmptyState>
+    }
+    else
+    {
+        <ul class="snippet-list">
+            @foreach (var s in _snippets)
+            {
+                var id = $"snippet-{s.Id:N}";
+                <li class="card glass snippet" @key="s.Id">
+                    <div class="panel-head">
+                        <h2 class="panel-title">@s.Title</h2>
+                        <span class="panel-meta"><time data-local-time="@s.CreatedAt.ToString("O", CultureInfo.InvariantCulture)">@s.CreatedAt.ToString("u", CultureInfo.InvariantCulture)</time></span>
+                    </div>
+                    <textarea id="@id" class="snippet-text" readonly rows="4" aria-label="@($"Saved text: {s.Title}")">@s.Content</textarea>
+                    <div class="session-row-actions">
+                        <CopyButton TargetSelector="@($"#{id}")" Label="Copy" Class="btn-quiet btn-sm" Tip="Copy this text" />
+                        <button type="button" class="btn btn-quiet btn-sm" @onclick="() => _deleting = s"><Icon Name="trash-2" /><span class="btn-label">Delete</span></button>
+                    </div>
+                </li>
+            }
+        </ul>
+    }
+</div>
+
+<ConfirmDialog Open="@(_deleting is not null)" OpenChanged="open => { if (!open) _deleting = null; }" Title="Delete this saved text?" ConfirmLabel="Delete" OnConfirm="DeleteAsync">
+    <p>“@_deleting?.Title” is permanently deleted from your account.</p>
+</ConfirmDialog>
+
+@code {
+    private IReadOnlyList<SnippetView> _snippets = [];
+    private string? _userId;
+    private bool _loaded;
+    private SnippetView? _deleting;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _userId = (await AuthenticationState.GetAuthenticationStateAsync()).User.GetUserId();
+        if (_userId is not null)
+        {
+            _snippets = await Snippets.ListAsync(_userId);
+        }
+
+        _loaded = true;
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (_deleting is null || _userId is null)
+        {
+            return;
+        }
+
+        if (await Snippets.DeleteAsync(_userId, _deleting.Id))
+        {
+            Toasts.Success("Deleted.");
+        }
+
+        _deleting = null;
+        _snippets = await Snippets.ListAsync(_userId);
+    }
+}

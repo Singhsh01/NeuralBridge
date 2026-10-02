@@ -1,0 +1,38 @@
+@using NeuralBridge.Web.Auth
+@inject AuthProviderStatus Providers
+@* Starts the real Google OAuth challenge (POST + antiforgery). When Google isn't configured on
+   this server, the button is shown disabled with a plain explanation, never configuration details. *@
+@if (Providers.GoogleAvailable)
+{
+    <form method="post" action="/account/login/google" class="google-form @Class" data-loading-text="Redirecting to Google…">
+        <AntiforgeryToken />
+        <input type="hidden" name="returnUrl" value="@ReturnUrl" />
+        <button type="submit" class="btn btn-google @ButtonClass" data-testid="google-signin" data-tip="Sign in with your Google account">
+            <Icon Name="log-in" />
+            <span class="btn-label">@Label</span>
+            <span class="btn-spinner" aria-hidden="true"></span>
+        </button>
+    </form>
+}
+else
+{
+    <div class="google-form is-unavailable @Class">
+        <button type="button" class="btn btn-google @ButtonClass" disabled aria-describedby="@_noteId" data-testid="google-signin">
+            <Icon Name="log-in" />
+            <span class="btn-label">@Label</span>
+        </button>
+        <span id="@_noteId" class="unavailable-note" data-testid="google-unavailable">@AuthProviderStatus.GoogleUnavailableMessage</span>
+    </div>
+}
+
+@code {
+    private readonly string _noteId = $"g-{Guid.NewGuid():N}"[..10];
+
+    [Parameter] public string ReturnUrl { get; set; } = "/";
+
+    [Parameter] public string Label { get; set; } = "Continue with Google";
+
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter] public string? ButtonClass { get; set; }
+}

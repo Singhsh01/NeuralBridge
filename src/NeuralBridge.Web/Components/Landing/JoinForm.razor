@@ -1,0 +1,87 @@
+@* Joins by session ID (+ PIN and name). Used as the landing "Join" card and on /join. *@
+@inject ISessionService Sessions
+@inject SessionCredentialStore CredentialStore
+@inject NavigationManager Navigation
+@inject ClientContext Client
+
+<form class="join-form" @onsubmit="JoinAsync" @onsubmit:preventDefault novalidate>
+    <fieldset class="form-fieldset" disabled="@(!RendererInfo.IsInteractive || _busy)">
+        <div class="field">
+            <label class="field-label with-icon" for="@($"{_id}-code")"><Icon Name="key-round" /> Session ID</label>
+            <input id="@($"{_id}-code")" class="input input-code" autocomplete="off" autocapitalize="characters" spellcheck="false"
+                   inputmode="text" maxlength="20" placeholder="XXXX-XXXX-XXXX" @bind="_code" @bind:event="oninput"
+                   aria-invalid="@(_error is not null ? "true" : null)" aria-describedby="@($"{_id}-msg")" data-testid="join-code" />
+        </div>
+        <div class="field">
+            <label class="field-label with-icon" for="@($"{_id}-pin")"><Icon Name="lock" /> PIN <span class="field-optional">only if the session has one</span></label>
+            <PinInput Id="@($"{_id}-pin")" @bind-Value="_pin" MaxLength="64" TestId="join-pin" />
+        </div>
+        <div class="field">
+            <label class="field-label with-icon" for="@($"{_id}-name")"><Icon Name="user" /> Your name <span class="field-optional">optional</span></label>
+            <input id="@($"{_id}-name")" class="input" maxlength="40" autocomplete="off" placeholder="e.g. Work laptop" @bind="_name" @bind:event="oninput" data-testid="join-name" />
+        </div>
+
+        <p id="@($"{_id}-msg")" class="@(_error is null ? "form-hint" : "form-error")" role="@(_error is null ? null : "alert")" data-testid="join-message">
+            @(_error ?? "Joining doesn't need an account.")
+        </p>
+
+        <button type="submit" class="btn btn-secondary btn-lg btn-block" disabled="@(string.IsNullOrWhiteSpace(_code))" data-testid="join-session"
+                data-tip-disabled="Enter the session ID first">
+            @if (_busy)
+            {
+                <Spinner Label="Joining" />
+            }
+            else
+            {
+                <Icon Name="log-in" />
+            }
+            <span class="btn-label">Join session</span>
+        </button>
+    </fieldset>
+</form>
+
+@code {
+    private readonly string _id = $"join-{Guid.NewGuid():N}"[..13];
+    private string? _code;
+    private string? _pin;
+    private string? _name;
+    private string? _error;
+    private bool _busy;
+
+    [Parameter] public string? Code { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        if (!string.IsNullOrWhiteSpace(Code) && _code is null)
+        {
+            _code = Code;
+        }
+    }
+
+    private async Task JoinAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_code) || _busy)
+        {
+            return;
+        }
+
+        _busy = true;
+        _error = null;
+        try
+        {
+            var result = await Sessions.JoinAsync(new JoinSessionCommand(_code, _pin, _name, Client.ClientKey));
+            if (result.Succeeded)
+            {
+                await CredentialStore.SaveAsync(result.Value!.Credentials);
+                Navigation.NavigateTo($"/session/{result.Value.PublicId}");
+                return;
+            }
+
+            _error = result.Message ?? ErrorMessages.For(result.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

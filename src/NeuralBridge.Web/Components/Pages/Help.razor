@@ -1,0 +1,48 @@
+@page "/help"
+
+<PageTitle>Help · NeuralBridge</PageTitle>
+
+<article class="page-narrow prose card glass">
+    <h1 class="page-title with-icon"><Icon Name="circle-help" /> Help</h1>
+    <p class="page-lede">Everything you need to move text between two screens.</p>
+
+    <h2 id="start">Start a session</h2>
+    <ol>
+        <li>On the first device, open NeuralBridge and click <strong>Create session</strong>. Add a PIN if the text is sensitive.</li>
+        <li>On the second device, open NeuralBridge, enter the <strong>session ID</strong> (and PIN) under <strong>Join a session</strong>, or open the shared link.</li>
+        <li>Type or paste on either screen. Use <strong>Copy text</strong> to put the result on that device's clipboard.</li>
+    </ol>
+
+    <h2 id="pin">PINs</h2>
+    <ul>
+        <li>A PIN protects a session so the session ID alone isn't enough to join. It's 4–32 characters, and spaces at the start and end are ignored.</li>
+        <li>The PIN field is ignored by password managers on purpose, so a saved password is never filled in by mistake. Use the eye button to check what you typed.</li>
+        <li>"We couldn't open a session with that ID and PIN" appears both for an unknown ID and for a wrong PIN, so nobody can test which sessions exist. Check both and try again.</li>
+        <li>After several wrong PINs, the session refuses new PIN attempts for a few minutes.</li>
+    </ul>
+
+    <h2 id="calls">Audio and video calls</h2>
+    <ul>
+        <li>In a session, click <strong>Audio call</strong> or <strong>Video call</strong>. Others see the call and can join with one click.</li>
+        <li>Your browser will ask for microphone (and camera) permission the first time. If you said no, allow it in the site settings (the icon next to the address bar) and try again.</li>
+        <li>Use the microphone and camera buttons to mute or turn your camera off; <strong>Leave call</strong> keeps you in the session.</li>
+        <li>Calls connect devices directly. Very restrictive networks (some company or university Wi-Fi) can block them; the shared text keeps working regardless.</li>
+        <li>Calls need a secure connection (an <code>https://</code> address) except on your own computer.</li>
+    </ul>
+
+    <h2 id="accounts">Accounts</h2>
+    <ul>
+        <li>You never need an account. <strong>Continue as guest</strong> goes straight to creating or joining a session.</li>
+        <li>With an account, sessions you create appear in <a href="/account/sessions">My sessions</a>, where you can reopen or close them from any device, and see past sessions.</li>
+        <li>Forgot your password? Use <a href="/account/forgot-password">Reset password</a> on the login page.</li>
+    </ul>
+
+    <h2 id="trouble">Troubleshooting</h2>
+    <ul>
+        <li><strong>"Reconnecting"</strong>: your device lost its connection. NeuralBridge reconnects automatically and keeps what you typed.</li>
+        <li><strong>Copy failed</strong>: some browsers block the clipboard on insecure (<code>http://</code>) addresses. Select the text and copy it manually.</li>
+        <li><strong>The session ended</strong>: sessions end when their time runs out or the owner closes them, and the text is deleted. Start a new one.</li>
+    </ul>
+
+    <p><a href="/security">How NeuralBridge protects your data</a></p>
+</article>

@@ -1,0 +1,157 @@
+@page "/account/login"
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Identity
+@using NeuralBridge.Application.Abstractions
+@using NeuralBridge.Infrastructure.Identity
+@using NeuralBridge.Web.Auth
+@inject SignInManager<ApplicationUser> SignInManager
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthProviderStatus Providers
+@inject IAppRateLimiter RateLimiter
+@inject NavigationManager Navigation
+@inject TimeProvider Time
+
+<PageTitle>Log in · NeuralBridge</PageTitle>
+
+<AccountShell Title="Log in" Subtitle="Optional. You can always use NeuralBridge as a guest." IconName="key-round" Error="@ErrorText" Status="@StatusText">
+    <ChildContent>
+        <GoogleButton ReturnUrl="@SafeReturn" ButtonClass="btn-block btn-lg" />
+
+        @if (Providers.LocalAccountsAvailable)
+        {
+            <div class="divider" aria-hidden="true"><span>or with email</span></div>
+            <EditForm Model="Input" method="post" OnValidSubmit="LoginAsync" FormName="login" class="auth-form" novalidate>
+                <DataAnnotationsValidator />
+                <div class="field">
+                    <label class="field-label with-icon" for="login-email"><Icon Name="mail" /> Email</label>
+                    <InputText id="login-email" class="input" type="email" autocomplete="username" @bind-Value="Input.Email" data-testid="login-email" />
+                    <ValidationMessage For="() => Input.Email" class="form-error" />
+                </div>
+                <div class="field">
+                    <div class="field-row">
+                        <label class="field-label with-icon" for="login-password"><Icon Name="key-round" /> Password</label>
+                        @if (Providers.PasswordResetAvailable)
+                        {
+                            <a class="field-link" href="/account/forgot-password" data-testid="forgot-link">Forgot password?</a>
+                        }
+                    </div>
+                    <InputText id="login-password" class="input" type="password" autocomplete="current-password" @bind-Value="Input.Password" data-testid="login-password" />
+                    <ValidationMessage For="() => Input.Password" class="form-error" />
+                </div>
+                <label class="check">
+                    <InputCheckbox @bind-Value="Input.RememberMe" />
+                    <span>Keep me signed in on this device</span>
+                </label>
+                <button type="submit" class="btn btn-primary btn-lg btn-block" data-testid="login-submit">
+                    <Icon Name="log-in" /><span class="btn-label">Log in</span>
+                </button>
+            </EditForm>
+        }
+    </ChildContent>
+    <Aside>
+        @if (Providers.LocalAccountsAvailable)
+        {
+            <span>New here? <a href="@($"/account/register?returnUrl={Uri.EscapeDataString(SafeReturn)}")">Create an account</a> · </span>
+        }
+        <a href="/#start" data-testid="login-guest">Continue as guest</a>
+    </Aside>
+</AccountShell>
+
+@code {
+    private string? _formError;
+
+    [CascadingParameter] private HttpContext HttpContext { get; set; } = default!;
+
+    // Name matches the property used in the @bind expressions below (field names are "Input.Email" etc.).
+    [SupplyParameterFromForm(FormName = "login", Name = "Input")] private LoginInput? InputPosted { get; set; }
+
+    private LoginInput Input => InputPosted ??= new();
+
+    [SupplyParameterFromQuery] private string? ReturnUrl { get; set; }
+
+    [SupplyParameterFromQuery(Name = "error")] private string? ErrorCode { get; set; }
+
+    [SupplyParameterFromQuery(Name = "status")] private string? StatusCode { get; set; }
+
+    private string SafeReturn => AccountEndpoints.SafeReturnUrl(ReturnUrl);
+
+    private string? ErrorText => _formError ?? ErrorCode switch
+    {
+        null => null,
+        "google_unavailable" => AuthProviderStatus.GoogleUnavailableMessage,
+        "google_cancelled" => "Google sign-in was cancelled. You can try again or continue as a guest.",
+        "google_failed" => "Google sign-in didn't complete. Please try again.",
+        "email_in_use" => "An account with this email already exists. Log in with your password, then connect Google in Account settings.",
+        "locked" => "This account is temporarily locked after too many attempts. Try again in a few minutes.",
+        _ => "Sign-in didn't complete. Please try again.",
+    };
+
+    private string? StatusText => StatusCode switch
+    {
+        "reset" => "Your password was changed. Log in with the new one.",
+        "deleted" => "Your account and its data were deleted.",
+        "signedout" => "You were signed out on every device.",
+        _ => null,
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (HttpMethods.IsGet(HttpContext.Request.Method))
+        {
+            // Clear any half-finished external sign-in so it can't be reused.
+            await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
+        }
+    }
+
+    private async Task LoginAsync()
+    {
+        if (!Providers.LocalAccountsAvailable)
+        {
+            return;
+        }
+
+        if (!RateLimiter.TryAcquire(RateLimitPolicy.Authentication, ClientContext.FromHttpContext(HttpContext)))
+        {
+            _formError = ErrorMessages.For(SessionError.RateLimited);
+            return;
+        }
+
+        var user = await UserManager.FindByEmailAsync(Input.Email.Trim());
+        if (user is null || !await UserManager.HasPasswordAsync(user))
+        {
+            // Same answer for unknown emails and Google-only accounts (no account enumeration).
+            _formError = "That email and password don't match an account. Accounts created with Google sign in with the Google button.";
+            return;
+        }
+
+        var result = await SignInManager.PasswordSignInAsync(user, Input.Password, Input.RememberMe, lockoutOnFailure: true);
+        if (result.IsLockedOut)
+        {
+            _formError = "This account is temporarily locked after too many attempts. Try again in a few minutes.";
+            return;
+        }
+
+        if (!result.Succeeded)
+        {
+            _formError = "That email and password don't match an account. Accounts created with Google sign in with the Google button.";
+            return;
+        }
+
+        user.LastSignInAt = Time.GetUtcNow();
+        await UserManager.UpdateAsync(user);
+        Navigation.NavigateTo(SafeReturn, forceLoad: true);
+    }
+
+    private sealed class LoginInput
+    {
+        [Required(ErrorMessage = "Enter your email address.")]
+        [EmailAddress(ErrorMessage = "Enter a valid email address.")]
+        public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Enter your password.")]
+        public string Password { get; set; } = string.Empty;
+
+        public bool RememberMe { get; set; } = true;
+    }
+}

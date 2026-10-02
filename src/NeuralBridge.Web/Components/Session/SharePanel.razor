@@ -1,0 +1,51 @@
+@* How to bring another device in. Prominent while the owner is alone, compact otherwise. *@
+<section class="panel share-panel @(Prominent ? "is-prominent" : null)" aria-labelledby="share-title">
+    <h2 id="share-title" class="panel-title"><Icon Name="share-2" /> @(Prominent ? "Open this on your other device" : "Invite a device")</h2>
+    @if (Prominent)
+    {
+        <p class="panel-lede">On the other screen, open NeuralBridge and enter this session ID, or open the link.</p>
+    }
+
+    <div class="share-code" aria-label="Session ID">
+        <span class="share-code-value" data-testid="session-code">@Code</span>
+        <CopyButton Text="@Code" Label="Copy ID" CopiedLabel="ID copied" Class="btn-quiet btn-sm" Tip="Copy the session ID" />
+    </div>
+
+    <div class="share-link">
+        <label class="field-label" for="share-url">Link</label>
+        <div class="input-row">
+            <input id="share-url" class="input input-mono" readonly value="@ShareUrl" />
+            <CopyButton TargetSelector="#share-url" Label="Copy link" CopiedLabel="Link copied" Class="btn-quiet btn-sm" Tip="Copy the join link" />
+        </div>
+    </div>
+
+    @if (!HasPin)
+    {
+        <p class="notice notice-warn">
+            <Icon Name="lock-open" />
+            <span>
+                Anyone with this session ID can join until the session ends.
+                @if (IsOwner)
+                {
+                    <span>Add a PIN below if you're sharing anything sensitive.</span>
+                }
+            </span>
+        </p>
+    }
+    else
+    {
+        <p class="notice"><Icon Name="lock" /><span>A PIN is required to join. Share it separately from the session ID.</span></p>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public string Code { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired] public string ShareUrl { get; set; } = string.Empty;
+
+    [Parameter] public bool HasPin { get; set; }
+
+    [Parameter] public bool IsOwner { get; set; }
+
+    [Parameter] public bool Prominent { get; set; }
+}

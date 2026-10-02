@@ -1,0 +1,32 @@
+@* The wallpaper layer behind every page. Full on the landing page (animated light, particles,
+   parallax); dimmed and still everywhere else so working screens stay calm.
+   Art direction: a dedicated landscape composition (sculpture right of centre, empty black on
+   the left for content) and the original portrait framing for tall screens. AVIF → WebP → JPEG. *@
+<div class="backdrop @(Full ? "backdrop-full" : "backdrop-dim")" data-parallax="@(Full ? "" : null)" aria-hidden="true">
+    <picture>
+        <source type="image/avif" media="(orientation: portrait)"
+                srcset="@Assets["img/wallpaper/wallpaper-portrait-720.avif"] 720w, @Assets["img/wallpaper/wallpaper-portrait-1080.avif"] 1080w, @Assets["img/wallpaper/wallpaper-portrait-1440.avif"] 1440w" sizes="100vw" />
+        <source type="image/webp" media="(orientation: portrait)"
+                srcset="@Assets["img/wallpaper/wallpaper-portrait-720.webp"] 720w, @Assets["img/wallpaper/wallpaper-portrait-1080.webp"] 1080w, @Assets["img/wallpaper/wallpaper-portrait-1440.webp"] 1440w" sizes="100vw" />
+        <source type="image/jpeg" media="(orientation: portrait)" srcset="@Assets["img/wallpaper/wallpaper-portrait-1080.jpg"]" />
+        <source type="image/avif"
+                srcset="@Assets["img/wallpaper/wallpaper-landscape-1280.avif"] 1280w, @Assets["img/wallpaper/wallpaper-landscape-1920.avif"] 1920w, @Assets["img/wallpaper/wallpaper-landscape-2560.avif"] 2560w" sizes="100vw" />
+        <source type="image/webp"
+                srcset="@Assets["img/wallpaper/wallpaper-landscape-1280.webp"] 1280w, @Assets["img/wallpaper/wallpaper-landscape-1920.webp"] 1920w, @Assets["img/wallpaper/wallpaper-landscape-2560.webp"] 2560w" sizes="100vw" />
+        <img class="backdrop-img" src="@Assets["img/wallpaper/wallpaper-landscape-1920.jpg"]" alt="" width="1920" height="1080"
+             decoding="async" fetchpriority="@(Full ? "high" : "low")" data-wallpaper />
+    </picture>
+    @if (Full)
+    {
+        <div class="backdrop-refraction"></div>
+        <div class="backdrop-shimmer"></div>
+        <canvas class="backdrop-particles" data-particles></canvas>
+    }
+    <div class="backdrop-scrim"></div>
+    <div class="backdrop-vignette"></div>
+</div>
+
+@code {
+    /// <summary>Full atmosphere (landing) versus a dim, motionless backdrop (everything else).</summary>
+    [Parameter] public bool Full { get; set; }
+}

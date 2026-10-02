@@ -1,0 +1,19 @@
+@using NeuralBridge.Web.Auth
+<span class="avatar avatar-@Size" style="--hue: @UserClaims.AvatarHue(Seed ?? Name)" aria-hidden="true">
+    <span>@UserClaims.Initials(Name)</span>
+    @if (ImageUrl is not null)
+    {
+        @* If the picture can't load (offline, blocked), site.js removes it and the initials show. *@
+        <img src="@ImageUrl" alt="" referrerpolicy="no-referrer" loading="lazy" data-avatar-img />
+    }
+</span>
+
+@code {
+    [Parameter, EditorRequired] public string Name { get; set; } = string.Empty;
+
+    [Parameter] public string? ImageUrl { get; set; }
+
+    [Parameter] public string? Seed { get; set; }
+
+    [Parameter] public string Size { get; set; } = "md";
+}

@@ -1,0 +1,26 @@
+@page "/error"
+@using System.Diagnostics
+
+<PageTitle>Error · NeuralBridge</PageTitle>
+
+<div class="page-narrow">
+    <EmptyState Title="Something went wrong" IsAlert="true">
+        <ChildContent>
+            <p>The server couldn't complete the request. Try again in a moment.</p>
+            @if (RequestId is not null)
+            {
+                <p class="hint">Reference: <code>@RequestId</code></p>
+            }
+        </ChildContent>
+        <Actions><a class="btn btn-primary" href="/">Back to NeuralBridge</a></Actions>
+    </EmptyState>
+</div>
+
+@code {
+    [CascadingParameter] private HttpContext? HttpContext { get; set; }
+
+    private string? RequestId { get; set; }
+
+    protected override void OnInitialized() =>
+        RequestId = Activity.Current?.Id ?? HttpContext?.TraceIdentifier;
+}

@@ -1,0 +1,108 @@
+@page "/"
+@layout LandingLayout
+@using NeuralBridge.Web.Auth
+@inject AuthProviderStatus Providers
+
+<PageTitle>NeuralBridge: move text between your devices in real time</PageTitle>
+
+<div class="landing">
+    <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-copy">
+            <Logo Class="hero-logo" ShowWordmark="false" />
+            <h1 id="hero-title" class="hero-title">Your thoughts, instantly available on every screen.</h1>
+            <p class="hero-lede">
+                Create a private bridge between your devices and move text, links, prompts and code in real time.
+                Talk over audio or video while you do. When the session ends, the text is gone.
+            </p>
+            <p class="hero-jump"><a class="btn btn-primary btn-glow" href="#start"><Icon Name="plus" /><span class="btn-label">Get started</span></a></p>
+        </div>
+
+        <div class="hero-aside">
+            <LocalTimeCard @rendermode="InteractiveServer" />
+        </div>
+    </section>
+
+    <section id="start" class="start" aria-label="Create or join a session">
+        <CreateSessionCard @rendermode="InteractiveServer" />
+
+        <section class="card glass join-card" aria-labelledby="join-card-title">
+            <div class="card-head">
+                <span class="card-icon card-icon-alt" aria-hidden="true"><Icon Name="log-in" /></span>
+                <div>
+                    <h2 id="join-card-title" class="card-title">Join a session</h2>
+                    <p class="card-sub">Enter the session ID shown on the other device.</p>
+                </div>
+            </div>
+            <JoinForm @rendermode="InteractiveServer" />
+        </section>
+
+        <section class="card glass account-card" aria-labelledby="account-card-title">
+            <AuthorizeView>
+                <Authorized>
+                    <div class="card-head">
+                        <UserAvatar Name="@context.User.DisplayName()" ImageUrl="@context.User.AvatarUrl()" Seed="@context.User.GetUserId()" Size="lg" />
+                        <div>
+                            <h2 id="account-card-title" class="card-title">Welcome back, @context.User.DisplayName()</h2>
+                            <p class="card-sub">Sessions you create are listed in My sessions and can be closed from any device.</p>
+                        </div>
+                    </div>
+                    <div class="account-card-actions">
+                        <a class="btn btn-quiet" href="/account/sessions"><Icon Name="history" /><span class="btn-label">My sessions</span></a>
+                        <a class="btn btn-quiet" href="/account/settings"><Icon Name="settings" /><span class="btn-label">Account settings</span></a>
+                    </div>
+                </Authorized>
+                <NotAuthorized>
+                    <div class="card-head">
+                        <span class="card-icon card-icon-warm" aria-hidden="true"><Icon Name="user-round" /></span>
+                        <div>
+                            <h2 id="account-card-title" class="card-title">Account <span class="field-optional">optional</span></h2>
+                            <p class="card-sub">Sign in to keep a list of your sessions, close them from any device, and save text you want to keep.</p>
+                        </div>
+                    </div>
+                    <div class="account-card-actions">
+                        <GoogleButton ButtonClass="btn-block" />
+                        @if (Providers.LocalAccountsAvailable)
+                        {
+                            <a class="btn btn-quiet btn-block" href="/account/login"><Icon Name="key-round" /><span class="btn-label">Log in</span></a>
+                            <a class="btn btn-quiet btn-block" href="/account/register"><Icon Name="user-plus" /><span class="btn-label">Create account</span></a>
+                        }
+                        <a class="btn btn-link btn-block" href="#create-name" data-testid="guest-cta"><Icon Name="user" /><span class="btn-label">Continue as guest</span></a>
+                        <p class="form-hint account-guest-note">No account needed to create or join a session.</p>
+                    </div>
+                </NotAuthorized>
+            </AuthorizeView>
+        </section>
+    </section>
+
+    <section class="how" aria-labelledby="how-title">
+        <h2 id="how-title" class="section-title">How it works</h2>
+        <ol class="steps">
+            <li class="step">
+                <h3 class="step-title">Create a session</h3>
+                <p>You get a 12-character session ID and a link. Choose how long it lasts, from 15 minutes to a day, and add a PIN if the text is sensitive.</p>
+            </li>
+            <li class="step">
+                <h3 class="step-title">Join from another screen</h3>
+                <p>On your other laptop, a university computer, a tablet or a phone, open NeuralBridge and enter the session ID. No account needed.</p>
+            </li>
+            <li class="step">
+                <h3 class="step-title">Type, talk, copy</h3>
+                <p>Edits appear on every device within a moment. Start an audio or video call if you need to talk it through, then copy the result with one click.</p>
+            </li>
+        </ol>
+    </section>
+
+    <section class="privacy-strip glass" aria-labelledby="privacy-title">
+        <h2 id="privacy-title" class="section-title">What happens to your text</h2>
+        <ul class="privacy-points">
+            <li><Icon Name="clock" /><div><strong>Kept in memory only.</strong> Shared text is never written to the database or to logs, and it's deleted when the session closes or expires.</div></li>
+            <li><Icon Name="lock" /><div><strong>The session ID is the key.</strong> Anyone with it can join an unprotected session until it ends. Add a PIN when it matters.</div></li>
+            <li><Icon Name="video" /><div><strong>Calls go device to device.</strong> Audio and video travel directly between browsers. Your camera and microphone switch on only when you join a call.</div></li>
+            <li><Icon Name="shield-check" /><div><strong>Nothing runs in the background.</strong> NeuralBridge never reads your clipboard, screen or keystrokes outside its editor.</div></li>
+        </ul>
+        <p class="privacy-links">
+            <a href="/security"><Icon Name="shield" /> Security &amp; privacy details</a>
+            <a href="/help"><Icon Name="circle-help" /> Help</a>
+        </p>
+    </section>
+</div>

@@ -1,0 +1,353 @@
+@page "/account/settings"
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.Extensions.Options
+@using NeuralBridge.Application.Options
+@using NeuralBridge.Infrastructure.Identity
+@using NeuralBridge.Web.Auth
+@attribute [Authorize]
+@inject UserManager<ApplicationUser> UserManager
+@inject SignInManager<ApplicationUser> SignInManager
+@inject IAccountDataService AccountData
+@inject AuthProviderStatus Providers
+@inject IOptions<SessionOptions> SessionOptions
+@inject NavigationManager Navigation
+
+<PageTitle>Account settings · NeuralBridge</PageTitle>
+
+<div class="page-wide settings">
+    <header class="settings-head">
+        @if (_user is not null)
+        {
+            <UserAvatar Name="@_name" ImageUrl="@_user.AvatarUrl" Seed="@_user.Id" Size="xl" />
+            <div>
+                <h1 class="page-title" data-testid="settings-name">@_name</h1>
+                @if (_user.Email is not null)
+                {
+                    <p class="page-lede with-icon"><Icon Name="mail" /> <span data-testid="settings-email">@_user.Email</span></p>
+                }
+            </div>
+        }
+    </header>
+
+    @if (StatusText is not null)
+    {
+        <p class="banner banner-ok" role="status" data-testid="settings-status"><Icon Name="circle-check" /><span>@StatusText</span></p>
+    }
+    @if (_error is not null)
+    {
+        <p class="banner banner-error" role="alert" data-testid="settings-error"><Icon Name="triangle-alert" /><span>@_error</span></p>
+    }
+
+    @if (_user is not null)
+    {
+        <div class="settings-grid">
+            <section class="card glass" aria-labelledby="profile-title">
+                <h2 id="profile-title" class="card-title with-icon"><Icon Name="user" /> Profile</h2>
+                <EditForm Model="Profile" method="post" OnValidSubmit="SaveProfileAsync" FormName="profile" novalidate>
+                    <DataAnnotationsValidator />
+                    <div class="field">
+                        <label class="field-label" for="profile-name">Display name</label>
+                        <InputText id="profile-name" class="input" maxlength="60" @bind-Value="Profile.DisplayName" data-testid="profile-name" />
+                        <p class="hint">Shown to others in sessions you create and in the menu.</p>
+                        <ValidationMessage For="() => Profile.DisplayName" class="form-error" />
+                    </div>
+                    <button type="submit" class="btn btn-primary" data-testid="profile-save"><Icon Name="check" /><span class="btn-label">Save profile</span></button>
+                </EditForm>
+            </section>
+
+            <section class="card glass" aria-labelledby="signin-title">
+                <h2 id="signin-title" class="card-title with-icon"><Icon Name="key-round" /> Sign-in methods</h2>
+
+                <div class="method">
+                    <div class="method-text">
+                        <strong>Google</strong>
+                        <span class="hint">@(_hasGoogle ? "Connected. You can sign in with Google." : Providers.GoogleAvailable ? "Not connected." : AuthProviderStatus.GoogleUnavailableMessage)</span>
+                    </div>
+                    @if (_hasGoogle)
+                    {
+                        <EditForm Model="Unlink" method="post" OnSubmit="UnlinkGoogleAsync" FormName="unlink">
+                            <button type="submit" class="btn btn-quiet btn-sm" disabled="@(!_hasPassword)" data-tip-disabled="Set a password first so you can still sign in" data-testid="unlink-google">Disconnect</button>
+                        </EditForm>
+                    }
+                    else if (Providers.GoogleAvailable)
+                    {
+                        <form method="post" action="/account/link/google" data-loading-text="Redirecting to Google…">
+                            <AntiforgeryToken />
+                            <button type="submit" class="btn btn-google btn-sm" data-testid="link-google"><Icon Name="link" /><span class="btn-label">Connect Google</span><span class="btn-spinner" aria-hidden="true"></span></button>
+                        </form>
+                    }
+                </div>
+
+                @if (Providers.LocalAccountsAvailable)
+                {
+                    <EditForm Model="Password" method="post" OnValidSubmit="SavePasswordAsync" FormName="password" class="method-form" novalidate>
+                        <DataAnnotationsValidator />
+                        <strong>@(_hasPassword ? "Change password" : "Add a password")</strong>
+                        @if (_hasPassword)
+                        {
+                            <div class="field">
+                                <label class="field-label" for="pw-current">Current password</label>
+                                <InputText id="pw-current" class="input" type="password" autocomplete="current-password" @bind-Value="Password.Current" />
+                            </div>
+                        }
+                        <div class="field">
+                            <label class="field-label" for="pw-new">New password</label>
+                            <InputText id="pw-new" class="input" type="password" autocomplete="new-password" @bind-Value="Password.New" />
+                            <ValidationMessage For="() => Password.New" class="form-error" />
+                        </div>
+                        <button type="submit" class="btn btn-quiet btn-sm"><Icon Name="key-round" /><span class="btn-label">@(_hasPassword ? "Change password" : "Add password")</span></button>
+                    </EditForm>
+                }
+            </section>
+
+            <section class="card glass" aria-labelledby="privacy-settings-title">
+                <h2 id="privacy-settings-title" class="card-title with-icon"><Icon Name="history" /> Session history</h2>
+                <p class="hint">
+                    When on, sessions you create stay in <a href="/account/sessions">My sessions</a> for @SessionOptions.Value.AccountHistoryRetentionDays days after they end:
+                    the session ID, dates and number of devices. Never the text.
+                </p>
+                <EditForm Model="History" method="post" OnSubmit="SaveHistoryAsync" FormName="history">
+                    <label class="switch">
+                        <InputCheckbox @bind-Value="History.Keep" data-testid="history-toggle" role="switch" />
+                        <span class="switch-track" aria-hidden="true"></span>
+                        <span class="control-label">Keep session history</span>
+                    </label>
+                    <div class="row-actions">
+                        <button type="submit" class="btn btn-quiet btn-sm" data-testid="history-save"><Icon Name="check" /><span class="btn-label">Save</span></button>
+                    </div>
+                </EditForm>
+            </section>
+
+            <section class="card glass" aria-labelledby="security-title">
+                <h2 id="security-title" class="card-title with-icon"><Icon Name="shield" /> Security</h2>
+                <p class="hint">Signs you out on every device and browser, including this one. Useful after using a shared computer.</p>
+                <EditForm Model="SignOutAll" method="post" OnSubmit="SignOutEverywhereAsync" FormName="signout-all">
+                    <button type="submit" class="btn btn-quiet btn-sm" data-testid="signout-everywhere"><Icon Name="log-out" /><span class="btn-label">Sign out everywhere</span></button>
+                </EditForm>
+            </section>
+
+            <section class="card glass danger-card" aria-labelledby="delete-title">
+                <h2 id="delete-title" class="card-title with-icon"><Icon Name="trash-2" /> Delete account</h2>
+                <p class="hint">
+                    Closes your running sessions (disconnecting everyone in them), deletes your session history and saved text,
+                    and removes your account. This can't be undone.
+                </p>
+                <details class="confirm-details">
+                    <summary class="btn btn-danger btn-sm" data-testid="delete-open">Delete my account…</summary>
+                    <EditForm Model="Delete" method="post" OnValidSubmit="DeleteAccountAsync" FormName="delete" class="delete-form" novalidate>
+                        <DataAnnotationsValidator />
+                        <div class="field">
+                            <label class="field-label" for="delete-confirm">Type <strong>DELETE</strong> to confirm</label>
+                            <InputText id="delete-confirm" class="input" autocomplete="off" @bind-Value="Delete.Confirmation" data-testid="delete-confirm" />
+                            <ValidationMessage For="() => Delete.Confirmation" class="form-error" />
+                        </div>
+                        @if (_hasPassword)
+                        {
+                            <div class="field">
+                                <label class="field-label" for="delete-password">Your password</label>
+                                <InputText id="delete-password" class="input" type="password" autocomplete="current-password" @bind-Value="Delete.Password" data-testid="delete-password" />
+                            </div>
+                        }
+                        <button type="submit" class="btn btn-danger" data-testid="delete-submit"><Icon Name="trash-2" /><span class="btn-label">Permanently delete account</span></button>
+                    </EditForm>
+                </details>
+            </section>
+        </div>
+    }
+</div>
+
+@code {
+    private ApplicationUser? _user;
+    private string _name = string.Empty;
+    private bool _hasPassword;
+    private bool _hasGoogle;
+    private string? _error;
+
+    [CascadingParameter] private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromQuery(Name = "status")] private string? StatusCode { get; set; }
+
+    // Name matches the property used in the @bind expressions below (field names are "Input.Email" etc.).
+    [SupplyParameterFromForm(FormName = "profile", Name = "Profile")] private ProfileInput? ProfilePosted { get; set; }
+
+    private ProfileInput Profile => ProfilePosted ??= new();
+
+    [SupplyParameterFromForm(FormName = "password", Name = "Password")] private PasswordInput? PasswordPosted { get; set; }
+
+    private PasswordInput Password => PasswordPosted ??= new();
+
+    [SupplyParameterFromForm(FormName = "history", Name = "History")] private HistoryInput? HistoryPosted { get; set; }
+
+    private HistoryInput History => HistoryPosted ??= new();
+
+    [SupplyParameterFromForm(FormName = "delete", Name = "Delete")] private DeleteInput? DeletePosted { get; set; }
+
+    private DeleteInput Delete => DeletePosted ??= new();
+
+    [SupplyParameterFromForm(FormName = "unlink", Name = "Unlink")] private EmptyInput? UnlinkPosted { get; set; }
+
+    private EmptyInput Unlink => UnlinkPosted ??= new();
+
+    [SupplyParameterFromForm(FormName = "signout-all", Name = "SignOutAll")] private EmptyInput? SignOutAllPosted { get; set; }
+
+    private EmptyInput SignOutAll => SignOutAllPosted ??= new();
+
+    private string? StatusText => StatusCode switch
+    {
+        "welcome" => "Welcome! Your account is ready. Sessions you create now appear in My sessions.",
+        "profile" => "Profile saved.",
+        "password" => "Password saved.",
+        "history_on" => "Session history is on.",
+        "history_off" => "Session history is off, and existing history was cleared.",
+        "google_linked" => "Google is connected. You can now sign in with Google.",
+        "google_unlinked" => "Google was disconnected.",
+        "google_in_use" => "That Google account is already connected to a different NeuralBridge account.",
+        "google_unavailable" => AuthProviderStatus.GoogleUnavailableMessage,
+        "link_failed" => "Connecting Google didn't complete. Please try again.",
+        _ => null,
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        _user = await UserManager.GetUserAsync(HttpContext.User);
+        if (_user is null)
+        {
+            Navigation.NavigateTo("/account/login?returnUrl=%2Faccount%2Fsettings");
+            return;
+        }
+
+        _name = UserClaims.FallbackName(_user.DisplayName, _user.Email);
+        _hasPassword = await UserManager.HasPasswordAsync(_user);
+        _hasGoogle = (await UserManager.GetLoginsAsync(_user)).Any(l => l.LoginProvider == AuthProviderStatus.GoogleScheme);
+        if (HttpMethods.IsGet(HttpContext.Request.Method))
+        {
+            Profile.DisplayName = _user.DisplayName ?? string.Empty;
+            History.Keep = _user.KeepSessionHistory;
+        }
+    }
+
+    private async Task SaveProfileAsync()
+    {
+        _user!.DisplayName = AccountText.CleanDisplayName(Profile.DisplayName);
+        await UserManager.UpdateAsync(_user);
+        await SignInManager.RefreshSignInAsync(_user); // new name in the header right away
+        Navigation.NavigateTo("/account/settings?status=profile");
+    }
+
+    private async Task SavePasswordAsync()
+    {
+        var result = _hasPassword
+            ? await UserManager.ChangePasswordAsync(_user!, Password.Current ?? string.Empty, Password.New)
+            : await UserManager.AddPasswordAsync(_user!, Password.New);
+        if (!result.Succeeded)
+        {
+            _error = result.Errors.Any(e => e.Code == "PasswordMismatch")
+                ? "The current password isn't right."
+                : string.Join(" ", result.Errors.Select(e => e.Description));
+            return;
+        }
+
+        await SignInManager.RefreshSignInAsync(_user!);
+        Navigation.NavigateTo("/account/settings?status=password");
+    }
+
+    private async Task SaveHistoryAsync()
+    {
+        _user!.KeepSessionHistory = History.Keep;
+        await UserManager.UpdateAsync(_user);
+        if (!History.Keep)
+        {
+            await AccountData.ClearHistoryAsync(_user.Id);
+        }
+
+        await SignInManager.RefreshSignInAsync(_user);
+        Navigation.NavigateTo($"/account/settings?status={(History.Keep ? "history_on" : "history_off")}");
+    }
+
+    private async Task UnlinkGoogleAsync()
+    {
+        if (!_hasPassword)
+        {
+            _error = "Add a password first, so you can still sign in after disconnecting Google.";
+            return;
+        }
+
+        var google = (await UserManager.GetLoginsAsync(_user!)).FirstOrDefault(l => l.LoginProvider == AuthProviderStatus.GoogleScheme);
+        if (google is not null)
+        {
+            await UserManager.RemoveLoginAsync(_user!, google.LoginProvider, google.ProviderKey);
+            await SignInManager.RefreshSignInAsync(_user!);
+        }
+
+        Navigation.NavigateTo("/account/settings?status=google_unlinked");
+    }
+
+    private async Task SignOutEverywhereAsync()
+    {
+        // Rotating the security stamp invalidates every existing cookie at its next validation (≤ 1 minute).
+        await UserManager.UpdateSecurityStampAsync(_user!);
+        await SignInManager.SignOutAsync();
+        Navigation.NavigateTo("/account/login?status=signedout", forceLoad: true);
+    }
+
+    private async Task DeleteAccountAsync()
+    {
+        if (!string.Equals(Delete.Confirmation?.Trim(), "DELETE", StringComparison.Ordinal))
+        {
+            _error = "Type DELETE (in capital letters) to confirm.";
+            return;
+        }
+
+        if (_hasPassword && !await UserManager.CheckPasswordAsync(_user!, Delete.Password ?? string.Empty))
+        {
+            _error = "The password isn't right. Your account was not deleted.";
+            return;
+        }
+
+        await AccountData.DeleteAllAsync(_user!.Id);
+        var result = await UserManager.DeleteAsync(_user);
+        if (!result.Succeeded)
+        {
+            _error = "Your account couldn't be deleted. Please try again.";
+            return;
+        }
+
+        await SignInManager.SignOutAsync();
+        Navigation.NavigateTo("/account/login?status=deleted", forceLoad: true);
+    }
+
+    private sealed class ProfileInput
+    {
+        [Required(ErrorMessage = "Enter a display name.")]
+        [StringLength(60, ErrorMessage = "Use 60 characters or fewer.")]
+        public string DisplayName { get; set; } = string.Empty;
+    }
+
+    private sealed class PasswordInput
+    {
+        public string? Current { get; set; }
+
+        [Required(ErrorMessage = "Enter a new password.")]
+        [StringLength(128)]
+        public string New { get; set; } = string.Empty;
+    }
+
+    private sealed class HistoryInput
+    {
+        public bool Keep { get; set; }
+    }
+
+    private sealed class DeleteInput
+    {
+        [Required(ErrorMessage = "Type DELETE to confirm.")]
+        public string? Confirmation { get; set; }
+
+        public string? Password { get; set; }
+    }
+
+    private sealed class EmptyInput
+    {
+    }
+}

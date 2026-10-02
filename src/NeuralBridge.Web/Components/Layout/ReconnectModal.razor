@@ -1,0 +1,16 @@
+<script type="module" src="@Assets["Components/Layout/ReconnectModal.razor.js"]"></script>
+
+<dialog id="components-reconnect-modal" class="reconnect" data-nosnippet aria-labelledby="reconnect-title">
+    <div class="reconnect-body">
+        <div class="reconnect-pulse" aria-hidden="true"></div>
+        <p id="reconnect-title" class="components-reconnect-first-attempt-visible">Connection lost. Reconnecting…</p>
+        <p class="components-reconnect-repeated-attempt-visible">
+            Still offline. Trying again in <span id="components-seconds-to-next-attempt"></span> s.
+        </p>
+        <p class="components-reconnect-failed-visible">Couldn't reconnect. Your session is still running on the server.</p>
+        <button id="components-reconnect-button" class="btn btn-primary components-reconnect-failed-visible">Try again</button>
+        <p class="components-pause-visible">This page was paused by the server.</p>
+        <p class="components-resume-failed-visible">Couldn't resume. Reload the page to rejoin.</p>
+        <button id="components-resume-button" class="btn btn-primary components-pause-visible components-resume-failed-visible">Resume</button>
+    </div>
+</dialog>

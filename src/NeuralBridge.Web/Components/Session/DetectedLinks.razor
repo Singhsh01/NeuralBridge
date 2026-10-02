@@ -1,0 +1,27 @@
+@* Links found in the shared text. Rendered as encoded text with the full URL visible,
+   and opened only when clicked. Never automatically, never with a Referer. *@
+@if (Links.Count > 0)
+{
+    <section class="links" aria-labelledby="links-title">
+        <h2 id="links-title" class="links-title">Links in the text</h2>
+        <ul class="links-list">
+            @foreach (var link in Links)
+            {
+                <li class="link-item" @key="link.AbsoluteUri">
+                    <span class="link-host">@link.Host</span>
+                    <span class="link-url" title="@link.AbsoluteUri">@link.AbsoluteUri</span>
+                    <a class="btn btn-quiet btn-xs" href="@link.AbsoluteUri" target="_blank" rel="noopener noreferrer nofollow"
+                       aria-label="@($"Open {link.Host} in a new tab")" data-tip="Opens in a new tab"><Icon Name="external-link" /><span class="btn-label">Open</span></a>
+                </li>
+            }
+        </ul>
+        @if (Links.Count == LinkDetector.MaxLinks)
+        {
+            <p class="hint">Showing the first @LinkDetector.MaxLinks links.</p>
+        }
+    </section>
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<Uri> Links { get; set; } = [];
+}

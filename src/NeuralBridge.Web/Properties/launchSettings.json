@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json.schemastore.org/launchsettings.json",
+  "profiles": {
+    "https": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "applicationUrl": "https://localhost:7243;http://localhost:5243",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    },
+    "http": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "applicationUrl": "http://localhost:5243",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "NeuralBridge__Hosting__HttpsRedirection": "false"
+      }
+    },
+    "lan (other devices)": {
+      "commandName": "Project",
+      "launchBrowser": false,
+      "applicationUrl": "http://0.0.0.0:5243",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "NeuralBridge__Hosting__HttpsRedirection": "false"
+      }
+    }
+  }
+}

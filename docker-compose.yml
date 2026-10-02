@@ -1,0 +1,56 @@
+# Local container run. Default: SQLite in a named volume.
+#   docker compose up --build
+# PostgreSQL instead:
+#   docker compose --profile postgres up --build   (and set NB_PROVIDER=PostgreSql)
+# TLS: put NeuralBridge behind a TLS-terminating reverse proxy (Caddy, nginx, Traefik) and set
+# NeuralBridge__Hosting__ForwardedHeadersEnabled=true only in that setup.
+services:
+  web:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      NeuralBridge__Persistence__Provider: ${NB_PROVIDER:-Sqlite}
+      ConnectionStrings__PostgreSql: "Host=postgres;Database=neuralbridge;Username=neuralbridge;Password=${POSTGRES_PASSWORD:-change-me-locally}"
+      # Optional Google sign-in for the *operator* (users never see these). Leave unset to run
+      # without Google; guests and email accounts still work. For production prefer the
+      # file-based secrets below over environment variables.
+      Authentication__Google__ClientId: ${GOOGLE_CLIENT_ID:-}
+      Authentication__Google__ClientSecret: ${GOOGLE_CLIENT_SECRET:-}
+      # Real email for password resets (otherwise reset is unavailable outside Development):
+      Email__Smtp__Host: ${SMTP_HOST:-}
+      Email__Smtp__Username: ${SMTP_USERNAME:-}
+      Email__Smtp__Password: ${SMTP_PASSWORD:-}
+      Email__From: ${MAIL_FROM:-}
+      NeuralBridge__Location__UserAgent: ${NB_GEOCODER_USER_AGENT:-NeuralBridge/1.0 (docker; set a contact address)}
+    volumes:
+      - neuralbridge-data:/app/data
+    restart: unless-stopped
+    # File-based secrets: each file under /run/secrets is read as a configuration key named
+    # after the file (KeyPerFile provider). Create the files outside the repository, e.g.
+    #   ./secrets/Authentication__Google__ClientId   and   ./secrets/Authentication__Google__ClientSecret
+    # then uncomment:
+    # secrets:
+    #   - Authentication__Google__ClientId
+    #   - Authentication__Google__ClientSecret
+
+  postgres:
+    image: postgres:17-alpine
+    profiles: ["postgres"]
+    environment:
+      POSTGRES_DB: neuralbridge
+      POSTGRES_USER: neuralbridge
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-locally}
+    volumes:
+      - neuralbridge-pg:/var/lib/postgresql/data
+    restart: unless-stopped
+
+# secrets:
+#   Authentication__Google__ClientId:
+#     file: ./secrets/Authentication__Google__ClientId
+#   Authentication__Google__ClientSecret:
+#     file: ./secrets/Authentication__Google__ClientSecret
+
+volumes:
+  neuralbridge-data:
+  neuralbridge-pg:

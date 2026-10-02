@@ -1,0 +1,81 @@
+@* Weather-app inspired time & place card. Time/date are rendered in the browser's own time zone by site.js.
+   Location is requested only when the person clicks "Show my city". No weather is shown or implied. *@
+@inject IJSRuntime JS
+@inject ILocationDisplayService Location
+@inject ClientContext Client
+
+<section class="sky-card glass" data-sky aria-labelledby="sky-place">
+    <p id="sky-place" class="sky-place with-icon">
+        <Icon Name="map-pin" /><span data-testid="location-label">@(_label ?? "Location not enabled")</span>
+    </p>
+    <p class="sky-time"><time data-local-clock aria-label="Your local time">--:--</time></p>
+    <p class="sky-date with-icon"><Icon Name="calendar-clock" /><span data-local-date>&nbsp;</span></p>
+    <p class="sky-zone with-icon"><Icon Name="globe" /><span data-local-zone>&nbsp;</span></p>
+
+    <div class="sky-actions">
+        @if (_state == LocationState.Idle || _state == LocationState.Denied || _state == LocationState.Unavailable)
+        {
+            <button type="button" class="btn btn-glass btn-sm" @onclick="RequestAsync" data-testid="enable-location" disabled="@(!RendererInfo.IsInteractive)"
+                    data-tip="Your browser asks for permission first">
+                <Icon Name="map-pin" /><span class="btn-label">@(_state == LocationState.Idle ? "Show my city" : "Try again")</span>
+            </button>
+        }
+        else if (_state == LocationState.Working)
+        {
+            <Spinner Label="Finding your city" ShowLabel="true" Class="spinner-light" />
+        }
+        @if (_note is not null)
+        {
+            <p class="sky-note" role="status">@_note</p>
+        }
+    </div>
+    <p class="sky-privacy">Your browser asks first. We round your position to about 1&nbsp;km, use it once to look up the city name, and don't store it.</p>
+</section>
+
+@code {
+    private enum LocationState { Idle, Working, Resolved, Denied, Unavailable }
+
+    private LocationState _state = LocationState.Idle;
+    private string? _label;
+    private string? _note;
+    private IJSObjectReference? _module;
+
+    private async Task RequestAsync()
+    {
+        _state = LocationState.Working;
+        _note = null;
+        try
+        {
+            _module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/geo.js");
+            var position = await _module.InvokeAsync<BrowserPosition>("requestPosition");
+            if (position.Error is not null)
+            {
+                _state = position.Error == "denied" ? LocationState.Denied : LocationState.Unavailable;
+                _note = position.Error == "denied"
+                    ? "Location permission was declined, so your city isn't shown. You can allow it in your browser's site settings."
+                    : "Your browser couldn't determine a location right now.";
+                return;
+            }
+
+            var result = await Location.ResolveAsync(position.Latitude, position.Longitude, Client.ClientKey);
+            if (result.Succeeded)
+            {
+                _label = result.Value!.Label;
+                _state = LocationState.Resolved;
+                _note = result.Value.IsCityResolved ? null : "City lookup is unavailable. Showing approximate coordinates instead.";
+            }
+            else
+            {
+                _state = LocationState.Unavailable;
+                _note = result.Message;
+            }
+        }
+        catch (JSException)
+        {
+            _state = LocationState.Unavailable;
+            _note = "Location isn't available in this browser.";
+        }
+    }
+
+    private sealed record BrowserPosition(double Latitude, double Longitude, string? Error);
+}

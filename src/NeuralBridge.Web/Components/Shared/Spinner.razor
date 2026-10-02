@@ -1,0 +1,12 @@
+<span class="spinner @Class" role="status">
+    <span class="spinner-ring" aria-hidden="true"></span>
+    <span class="@(ShowLabel ? "spinner-label" : "visually-hidden")">@Label</span>
+</span>
+
+@code {
+    [Parameter] public string Label { get; set; } = "Loading";
+
+    [Parameter] public bool ShowLabel { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+}

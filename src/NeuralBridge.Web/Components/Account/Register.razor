@@ -1,0 +1,132 @@
+@page "/account/register"
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.Extensions.Options
+@using NeuralBridge.Application.Abstractions
+@using NeuralBridge.Infrastructure.Identity
+@using NeuralBridge.Web.Auth
+@inject UserManager<ApplicationUser> UserManager
+@inject SignInManager<ApplicationUser> SignInManager
+@inject AuthProviderStatus Providers
+@inject IAppRateLimiter RateLimiter
+@inject IOptions<LocalAccountOptions> LocalOptions
+@inject NavigationManager Navigation
+@inject TimeProvider Time
+
+<PageTitle>Create account · NeuralBridge</PageTitle>
+
+<AccountShell Title="Create an account" Subtitle="Keep a list of your sessions and save text you want to keep. Guests can do everything else." IconName="user-plus" Error="@_error">
+    <ChildContent>
+        <GoogleButton ReturnUrl="@SafeReturn" Label="Sign up with Google" ButtonClass="btn-block btn-lg" />
+
+        @if (!Providers.LocalAccountsAvailable)
+        {
+            <p class="hint">Email registration is turned off on this server.</p>
+        }
+        else
+        {
+            <div class="divider" aria-hidden="true"><span>or with email</span></div>
+            <EditForm Model="Input" method="post" OnValidSubmit="RegisterAsync" FormName="register" class="auth-form" novalidate>
+                <DataAnnotationsValidator />
+                <div class="field">
+                    <label class="field-label with-icon" for="reg-name"><Icon Name="user" /> Name <span class="field-optional">optional</span></label>
+                    <InputText id="reg-name" class="input" autocomplete="name" maxlength="60" @bind-Value="Input.DisplayName" data-testid="register-name" />
+                    <ValidationMessage For="() => Input.DisplayName" class="form-error" />
+                </div>
+                <div class="field">
+                    <label class="field-label with-icon" for="reg-email"><Icon Name="mail" /> Email</label>
+                    <InputText id="reg-email" class="input" type="email" autocomplete="email" @bind-Value="Input.Email" data-testid="register-email" />
+                    <ValidationMessage For="() => Input.Email" class="form-error" />
+                </div>
+                <div class="field">
+                    <label class="field-label with-icon" for="reg-password"><Icon Name="key-round" /> Password</label>
+                    <InputText id="reg-password" class="input" type="password" autocomplete="new-password" @bind-Value="Input.Password" aria-describedby="reg-password-hint" data-testid="register-password" />
+                    <p id="reg-password-hint" class="hint">At least @LocalOptions.Value.MinimumPasswordLength characters. A short phrase is easier to remember than symbols.</p>
+                    <ValidationMessage For="() => Input.Password" class="form-error" />
+                </div>
+                <div class="field">
+                    <label class="field-label" for="reg-confirm">Repeat password</label>
+                    <InputText id="reg-confirm" class="input" type="password" autocomplete="new-password" @bind-Value="Input.ConfirmPassword" data-testid="register-confirm" />
+                    <ValidationMessage For="() => Input.ConfirmPassword" class="form-error" />
+                </div>
+                <button type="submit" class="btn btn-primary btn-lg btn-block" data-testid="register-submit">
+                    <Icon Name="user-plus" /><span class="btn-label">Create account</span>
+                </button>
+            </EditForm>
+        }
+    </ChildContent>
+    <Aside>
+        <span>Already have one? <a href="@($"/account/login?returnUrl={Uri.EscapeDataString(SafeReturn)}")">Log in</a> · </span>
+        <a href="/#start">Continue as guest</a>
+    </Aside>
+</AccountShell>
+
+@code {
+    private string? _error;
+
+    [CascadingParameter] private HttpContext HttpContext { get; set; } = default!;
+
+    // Name matches the property used in the @bind expressions below (field names are "Input.Email" etc.).
+    [SupplyParameterFromForm(FormName = "register", Name = "Input")] private RegisterInput? InputPosted { get; set; }
+
+    private RegisterInput Input => InputPosted ??= new();
+
+    [SupplyParameterFromQuery] private string? ReturnUrl { get; set; }
+
+    private string SafeReturn => AccountEndpoints.SafeReturnUrl(ReturnUrl);
+
+    private async Task RegisterAsync()
+    {
+        if (!Providers.LocalAccountsAvailable)
+        {
+            return;
+        }
+
+        if (!RateLimiter.TryAcquire(RateLimitPolicy.Authentication, ClientContext.FromHttpContext(HttpContext)))
+        {
+            _error = ErrorMessages.For(SessionError.RateLimited);
+            return;
+        }
+
+        var email = Input.Email.Trim();
+        var now = Time.GetUtcNow();
+        var user = new ApplicationUser
+        {
+            UserName = email,
+            Email = email,
+            DisplayName = AccountText.CleanDisplayName(Input.DisplayName) ?? AccountText.CleanDisplayName(email.Split('@')[0]),
+            CreatedAt = now,
+            LastSignInAt = now,
+        };
+
+        var result = await UserManager.CreateAsync(user, Input.Password);
+        if (!result.Succeeded)
+        {
+            _error = result.Errors.Any(e => e.Code is "DuplicateEmail" or "DuplicateUserName")
+                ? "An account with this email already exists. Log in instead, or reset the password."
+                : string.Join(" ", result.Errors.Select(e => e.Description));
+            return;
+        }
+
+        await SignInManager.SignInAsync(user, isPersistent: true);
+        Navigation.NavigateTo(SafeReturn == "/" ? "/account/settings?status=welcome" : SafeReturn, forceLoad: true);
+    }
+
+    private sealed class RegisterInput
+    {
+        [StringLength(60, ErrorMessage = "Use 60 characters or fewer.")]
+        public string? DisplayName { get; set; }
+
+        [Required(ErrorMessage = "Enter your email address.")]
+        [EmailAddress(ErrorMessage = "Enter a valid email address.")]
+        [StringLength(254)]
+        public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Choose a password.")]
+        [StringLength(128, ErrorMessage = "Use 128 characters or fewer.")]
+        public string Password { get; set; } = string.Empty;
+
+        [Compare(nameof(Password), ErrorMessage = "The passwords don't match.")]
+        public string ConfirmPassword { get; set; } = string.Empty;
+    }
+}

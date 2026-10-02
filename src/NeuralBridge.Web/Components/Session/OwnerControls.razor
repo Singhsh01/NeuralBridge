@@ -1,0 +1,157 @@
+@inject ISessionOwnerService Owner
+@inject ToastService Toasts
+@inject IServiceProvider Services
+
+<section class="panel owner-panel" aria-labelledby="owner-title">
+    <h2 id="owner-title" class="panel-title"><Icon Name="shield" /> Owner controls</h2>
+
+    <div class="control">
+        <div class="control-text">
+            <span class="control-label with-icon"><Icon Name="hourglass" /> Time left</span>
+            <time class="control-value" data-countdown-to="@Snapshot.ExpiresAt.ToString("O", CultureInfo.InvariantCulture)">…</time>
+        </div>
+        <div class="control-actions">
+            @foreach (var minutes in _extensionSteps)
+            {
+                <button type="button" class="btn btn-quiet btn-sm" disabled="@(!Snapshot.CanExtend || _busy)"
+                        @onclick="() => ExtendAsync(minutes)">+@FormatMinutes(minutes)</button>
+            }
+        </div>
+        @if (!Snapshot.CanExtend)
+        {
+            <p class="hint">This session has reached its maximum lifetime.</p>
+        }
+    </div>
+
+    <div class="control">
+        <label class="switch">
+            <input type="checkbox" role="switch" checked="@Snapshot.GuestEditingEnabled" disabled="@_busy"
+                   @onchange="ToggleGuestEditingAsync" />
+            <span class="switch-track" aria-hidden="true"></span>
+            <span class="control-label">Guests can edit</span>
+        </label>
+        <p class="hint">@(Snapshot.GuestEditingEnabled ? "Everyone can type." : "Only owners can type. Guests can read and copy.")</p>
+    </div>
+
+    <div class="control">
+        <span class="control-label with-icon"><Icon Name="@(Snapshot.HasPin ? "lock" : "lock-open")" /> Session PIN</span>
+        <form class="input-row" @onsubmit="SetPinAsync" @onsubmit:preventDefault novalidate>
+            <label class="visually-hidden" for="owner-pin">@(Snapshot.HasPin ? "New PIN" : "PIN to require")</label>
+            <PinInput Id="owner-pin" @bind-Value="_pin" MaxLength="_options.PinMaxLength" Disabled="_busy"
+                      Placeholder="@(Snapshot.HasPin ? "New PIN" : $"{_options.PinMinLength}+ characters")" DescribedBy="owner-pin-hint" TestId="owner-pin" />
+            <button type="submit" class="btn btn-quiet btn-sm" disabled="@(_busy || !PinLongEnough)" data-testid="owner-set-pin"
+                    data-tip-disabled="@($"Enter at least {_options.PinMinLength} characters")">
+                <Icon Name="key-round" /><span class="btn-label">@(Snapshot.HasPin ? "Change PIN" : "Require PIN")</span>
+            </button>
+        </form>
+        @if (Snapshot.HasPin)
+        {
+            <button type="button" class="btn btn-link btn-sm" disabled="@_busy" @onclick="RemovePinAsync" data-testid="owner-remove-pin">Remove PIN</button>
+        }
+        <p id="owner-pin-hint" class="hint">@(Snapshot.HasPin ? "New devices need the PIN. Devices already here stay connected." : "Without a PIN, the session ID alone lets someone join.")</p>
+    </div>
+
+    <div class="control">
+        <span class="control-label with-icon"><Icon Name="refresh-cw" /> Session ID</span>
+        <button type="button" class="btn btn-quiet btn-sm" disabled="@_busy" @onclick="() => _confirmRotate = true">Issue a new ID</button>
+        <p class="hint">The current ID stops working for new devices.</p>
+    </div>
+
+    <div class="control control-danger">
+        <button type="button" class="btn btn-danger" disabled="@_busy" @onclick="() => _confirmClose = true" data-testid="close-session"><Icon Name="door-open" /><span class="btn-label">Close session</span></button>
+        <p class="hint">Disconnects every device and deletes the text from the server.</p>
+    </div>
+</section>
+
+<ConfirmDialog @bind-Open="_confirmRotate" Title="Issue a new session ID?" ConfirmLabel="Issue new ID" Destructive="false" OnConfirm="RotateAsync">
+    <p>The current ID stops working right away. Devices already in the session stay connected.</p>
+</ConfirmDialog>
+
+<ConfirmDialog @bind-Open="_confirmClose" Title="Close this session?" ConfirmLabel="Close session" OnConfirm="CloseAsync">
+    <p>Every connected device is disconnected and the shared text is deleted from the server. This can't be undone.</p>
+</ConfirmDialog>
+
+@code {
+    private NeuralBridge.Application.Options.SessionOptions _options = new();
+    private IReadOnlyList<int> _extensionSteps = [];
+    private string? _pin;
+
+    private bool PinLongEnough => (_pin?.Trim().Length ?? 0) >= _options.PinMinLength;
+    private bool _busy;
+    private bool _confirmRotate;
+    private bool _confirmClose;
+
+    [Parameter, EditorRequired] public SessionSnapshot Snapshot { get; set; } = default!;
+
+    [Parameter, EditorRequired] public ParticipantCredentials Credentials { get; set; } = default!;
+
+    /// <summary>Raised after a successful change so the workspace can refresh.</summary>
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    /// <summary>Raised when an operation reports the session or access is gone.</summary>
+    [Parameter] public EventCallback<SessionError> OnAccessLost { get; set; }
+
+    protected override void OnInitialized()
+    {
+        _options = NeuralBridge.Application.DependencyInjection.GetSessionOptions(Services);
+        _extensionSteps = _options.ExtensionSteps.Select(t => (int)t.TotalMinutes).ToList();
+    }
+
+    private Task ExtendAsync(int minutes) => RunAsync(
+        async () => await Owner.ExtendAsync(Credentials, minutes),
+        $"Added {FormatMinutes(minutes)}.");
+
+    private Task ToggleGuestEditingAsync(ChangeEventArgs e)
+    {
+        var enabled = e.Value is bool b && b;
+        return RunAsync(
+            async () => await Owner.SetGuestEditingAsync(Credentials, enabled),
+            enabled ? "Guests can edit again." : "Guests are now read-only.");
+    }
+
+    private async Task SetPinAsync()
+    {
+        var hadPin = Snapshot.HasPin;
+        await RunAsync(async () => await Owner.SetPinAsync(Credentials, _pin), hadPin ? "PIN changed." : "PIN required for new devices.");
+        _pin = null;
+    }
+
+    private Task RemovePinAsync() => RunAsync(async () => await Owner.RemovePinAsync(Credentials), "PIN removed.");
+
+    private Task RotateAsync() => RunAsync(async () => await Owner.RotateCodeAsync(Credentials), "New session ID issued.");
+
+    private Task CloseAsync() => RunAsync(async () => await Owner.CloseAsync(Credentials), null);
+
+    private async Task RunAsync(Func<Task<Result>> action, string? successMessage)
+    {
+        _busy = true;
+        try
+        {
+            var result = await action();
+            if (result.Succeeded)
+            {
+                if (successMessage is not null)
+                {
+                    Toasts.Success(successMessage);
+                }
+
+                await OnChanged.InvokeAsync();
+            }
+            else if (result.Error is SessionError.Expired or SessionError.Closed or SessionError.Removed or SessionError.Unauthorized)
+            {
+                await OnAccessLost.InvokeAsync(result.Error);
+            }
+            else
+            {
+                Toasts.Error(result.Message ?? ErrorMessages.For(result.Error));
+            }
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    internal static string FormatMinutes(int minutes) =>
+        minutes % 60 == 0 ? $"{minutes / 60} h" : $"{minutes} min";
+}

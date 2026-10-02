@@ -1,0 +1,61 @@
+@*
+    Session PIN field.
+
+    Why not <input type="password">? Password managers treat it as an account password:
+    Safari's "strong password" and Chrome/1Password autofill silently put a saved or generated
+    password into it, so sessions got PINs nobody typed and joins failed with "wrong PIN".
+    A PIN is a shared, per-session code, so this is a text field that password managers ignore
+    and that is masked with CSS. A show/hide toggle lets people check what they typed.
+    The value is bound on every keystroke (oninput), so buttons that depend on it update immediately.
+*@
+<div class="pin-field">
+    <input id="@Id"
+           class="input input-pin @(_revealed ? "is-revealed" : null)"
+           type="text"
+           name="@_name"
+           value="@Value"
+           @oninput="OnInput"
+           autocomplete="off"
+           autocapitalize="off"
+           autocorrect="off"
+           spellcheck="false"
+           inputmode="text"
+           maxlength="@MaxLength"
+           placeholder="@Placeholder"
+           aria-describedby="@DescribedBy"
+           disabled="@Disabled"
+           data-1p-ignore
+           data-lpignore="true"
+           data-bwignore
+           data-form-type="other"
+           data-testid="@TestId" />
+    <button type="button" class="pin-toggle icon-btn icon-btn-sm" data-tip="@(_revealed ? "Hide PIN" : "Show PIN")"
+            aria-label="@(_revealed ? "Hide PIN" : "Show PIN")" aria-controls="@Id" aria-pressed="@(_revealed ? "true" : "false")"
+            @onclick="() => _revealed = !_revealed" disabled="@Disabled">
+        <Icon Name="@(_revealed ? "eye-off" : "eye")" />
+    </button>
+</div>
+
+@code {
+    // A per-render random name stops browsers from matching saved form history to this field.
+    private readonly string _name = $"nb-pin-{Guid.NewGuid():N}";
+    private bool _revealed;
+
+    [Parameter, EditorRequired] public string Id { get; set; } = string.Empty;
+
+    [Parameter] public string? Value { get; set; }
+
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+
+    [Parameter] public int MaxLength { get; set; } = 32;
+
+    [Parameter] public string? Placeholder { get; set; }
+
+    [Parameter] public string? DescribedBy { get; set; }
+
+    [Parameter] public bool Disabled { get; set; }
+
+    [Parameter] public string? TestId { get; set; }
+
+    private Task OnInput(ChangeEventArgs e) => ValueChanged.InvokeAsync(e.Value?.ToString());
+}

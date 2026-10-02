@@ -1,0 +1,46 @@
+@* Shared frame for sign-in pages: card, title, optional status/error banner. *@
+<div class="page-narrow auth-page">
+    <section class="card glass form-card" aria-labelledby="auth-title">
+        <div class="card-head">
+            <span class="card-icon @IconClass" aria-hidden="true"><Icon Name="@IconName" /></span>
+            <div>
+                <h1 id="auth-title" class="page-title">@Title</h1>
+                @if (Subtitle is not null)
+                {
+                    <p class="card-sub">@Subtitle</p>
+                }
+            </div>
+        </div>
+        @if (Error is not null)
+        {
+            <p class="banner banner-error" role="alert" data-testid="auth-error"><Icon Name="triangle-alert" /><span>@Error</span></p>
+        }
+        @if (Status is not null)
+        {
+            <p class="banner banner-ok" role="status" data-testid="auth-status"><Icon Name="circle-check" /><span>@Status</span></p>
+        }
+        @ChildContent
+    </section>
+    @if (Aside is not null)
+    {
+        <div class="page-aside">@Aside</div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+
+    [Parameter] public string? Subtitle { get; set; }
+
+    [Parameter] public string IconName { get; set; } = "key-round";
+
+    [Parameter] public string? IconClass { get; set; }
+
+    [Parameter] public string? Error { get; set; }
+
+    [Parameter] public string? Status { get; set; }
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    [Parameter] public RenderFragment? Aside { get; set; }
+}

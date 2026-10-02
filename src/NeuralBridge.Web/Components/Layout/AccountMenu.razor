@@ -1,0 +1,33 @@
+@using System.Security.Claims
+@using NeuralBridge.Web.Auth
+
+<details class="account-menu" data-menu data-testid="account-menu">
+    <summary class="account-trigger" aria-label="@($"Account menu for {User.DisplayName()}")">
+        <UserAvatar Name="@User.DisplayName()" ImageUrl="@User.AvatarUrl()" Seed="@User.GetUserId()" Size="sm" />
+        <span class="account-name" data-testid="account-name">@User.DisplayName()</span>
+        <Icon Name="chevron-down" Class="account-chevron" />
+    </summary>
+    <div class="menu glass" role="menu">
+        <div class="menu-head">
+            <UserAvatar Name="@User.DisplayName()" ImageUrl="@User.AvatarUrl()" Seed="@User.GetUserId()" Size="lg" />
+            <div>
+                <strong>@User.DisplayName()</strong>
+                @if (User.Email() is { } email)
+                {
+                    <span class="menu-email" data-testid="account-email">@email</span>
+                }
+            </div>
+        </div>
+        <a role="menuitem" href="/account/sessions" data-testid="menu-my-sessions"><Icon Name="history" /> My sessions</a>
+        <a role="menuitem" href="/account/saved"><Icon Name="bookmark" /> Saved text</a>
+        <a role="menuitem" href="/account/settings" data-testid="menu-settings"><Icon Name="settings" /> Account settings</a>
+        <form method="post" action="/account/logout">
+            <AntiforgeryToken />
+            <button type="submit" role="menuitem" data-testid="logout"><Icon Name="log-out" /> Log out</button>
+        </form>
+    </div>
+</details>
+
+@code {
+    [Parameter, EditorRequired] public ClaimsPrincipal User { get; set; } = default!;
+}

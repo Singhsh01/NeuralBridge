@@ -1,0 +1,176 @@
+@page "/account/sessions"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.Extensions.Options
+@using NeuralBridge.Application.Options
+@using NeuralBridge.Domain.Sessions
+@using NeuralBridge.Web.Auth
+@attribute [Authorize]
+@inject ISessionService Sessions
+@inject ISessionOwnerService Owner
+@inject IAccountDataService AccountData
+@inject AuthenticationStateProvider AuthenticationState
+@inject IOptions<SessionOptions> SessionOptions
+@inject NavigationManager Navigation
+@inject ToastService Toasts
+@inject TimeProvider Time
+
+<PageTitle>My sessions · NeuralBridge</PageTitle>
+
+<div class="page-wide">
+    <ToastRegion />
+    <header class="page-head">
+        <h1 class="page-title with-icon"><Icon Name="history" /> My sessions</h1>
+        <a class="btn btn-primary btn-glow" href="/#start"><Icon Name="plus" /><span class="btn-label">New session</span></a>
+    </header>
+
+    @if (!_loaded)
+    {
+        <Spinner Label="Loading your sessions" ShowLabel="true" />
+    }
+    else
+    {
+        <section class="card glass" aria-labelledby="active-title">
+            <h2 id="active-title" class="card-title with-icon"><Icon Name="radio" /> Running now</h2>
+            @if (_active.Count == 0)
+            {
+                <EmptyState Title="No running sessions" IconName="clock">
+                    <ChildContent><p>Sessions you create while signed in appear here until they end.</p></ChildContent>
+                </EmptyState>
+            }
+            else
+            {
+                <ul class="session-list" data-testid="active-sessions">
+                    @foreach (var s in _active)
+                    {
+                        <li class="session-row" @key="s.PublicId">
+                            <div class="session-row-main">
+                                <span class="ws-code">@s.FormattedCode</span>
+                                <span class="hint with-icon">
+                                    <Icon Name="timer" /> Ends in <time data-countdown-to="@s.ExpiresAt.ToString("O", CultureInfo.InvariantCulture)">…</time>
+                                    · <Icon Name="users" /> @s.OnlineParticipants of @s.ActiveParticipants online
+                                    · <Icon Name="@(s.HasPin ? "lock" : "lock-open")" /> @(s.HasPin ? "PIN" : "No PIN")
+                                </span>
+                            </div>
+                            <div class="session-row-actions">
+                                <a class="btn btn-primary btn-sm" href="@($"/session/{s.PublicId}")"><Icon Name="external-link" /><span class="btn-label">Open</span></a>
+                                <CopyButton Text="@($"{Navigation.BaseUri}join/{s.FormattedCode}")" Label="Copy link" Class="btn-quiet btn-sm" Tip="Copy the join link" />
+                                <button type="button" class="btn btn-quiet btn-sm" @onclick="() => _closing = s"><Icon Name="door-open" /><span class="btn-label">Close</span></button>
+                            </div>
+                        </li>
+                    }
+                </ul>
+            }
+        </section>
+
+        <section class="card glass" aria-labelledby="history-title">
+            <div class="card-head-row">
+                <h2 id="history-title" class="card-title with-icon"><Icon Name="calendar-clock" /> History</h2>
+                @if (_history.Count > 0)
+                {
+                    <button type="button" class="btn btn-quiet btn-sm" @onclick="() => _confirmClear = true" data-testid="clear-history"><Icon Name="trash-2" /><span class="btn-label">Clear history</span></button>
+                }
+            </div>
+            @if (!_keepsHistory)
+            {
+                <p class="hint">History is off. Turn it on in <a href="/account/settings">Account settings</a> to keep a list of ended sessions.</p>
+            }
+            else if (_history.Count == 0)
+            {
+                <p class="hint">Ended sessions stay here for @SessionOptions.Value.AccountHistoryRetentionDays days: the ID, dates and number of devices. Never the text.</p>
+            }
+            else
+            {
+                <table class="history-table" data-testid="history">
+                    <thead><tr><th scope="col">Session</th><th scope="col">Started</th><th scope="col">Lasted</th><th scope="col">Devices</th><th scope="col">Ended</th></tr></thead>
+                    <tbody>
+                        @foreach (var h in _history)
+                        {
+                            <tr @key="h.PublicId">
+                                <td class="ws-code">@h.FormattedCode</td>
+                                <td><time data-local-time="@h.CreatedAt.ToString("O", CultureInfo.InvariantCulture)">@h.CreatedAt.ToString("u", CultureInfo.InvariantCulture)</time></td>
+                                <td>@FormatDuration(h.Duration(Time.GetUtcNow()))</td>
+                                <td>@h.Participants</td>
+                                <td>@(h.EndReason == SessionEndReason.ClosedByOwner ? "Closed" : "Expired")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </section>
+    }
+</div>
+
+<ConfirmDialog Open="@(_closing is not null)" OpenChanged="open => { if (!open) _closing = null; }" Title="@($"Close session {_closing?.FormattedCode}?")" ConfirmLabel="Close session" OnConfirm="CloseAsync">
+    <p>Every connected device is disconnected and the text is deleted from the server.</p>
+</ConfirmDialog>
+
+<ConfirmDialog @bind-Open="_confirmClear" Title="Clear your session history?" ConfirmLabel="Clear history" OnConfirm="ClearHistoryAsync">
+    <p>All ended sessions are removed from this list. Running sessions are not affected.</p>
+</ConfirmDialog>
+
+@code {
+    private IReadOnlyList<OwnedSessionSummary> _active = [];
+    private IReadOnlyList<SessionHistoryItem> _history = [];
+    private string? _userId;
+    private bool _keepsHistory = true;
+    private bool _loaded;
+    private bool _confirmClear;
+    private OwnedSessionSummary? _closing;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = (await AuthenticationState.GetAuthenticationStateAsync()).User;
+        _userId = user.GetUserId();
+        _keepsHistory = user.KeepsSessionHistory();
+        await LoadAsync();
+        _loaded = true;
+    }
+
+    private async Task LoadAsync()
+    {
+        if (_userId is null)
+        {
+            return;
+        }
+
+        _active = await Sessions.ListOwnedAsync(_userId);
+        _history = await AccountData.ListHistoryAsync(_userId);
+    }
+
+    private async Task CloseAsync()
+    {
+        if (_closing is null || _userId is null)
+        {
+            return;
+        }
+
+        var result = await Owner.CloseAsAccountOwnerAsync(_closing.PublicId, _userId);
+        if (result.Succeeded)
+        {
+            Toasts.Success($"Closed {_closing.FormattedCode}.");
+        }
+        else
+        {
+            Toasts.Error(result.Message ?? ErrorMessages.For(result.Error));
+        }
+
+        _closing = null;
+        await LoadAsync();
+    }
+
+    private async Task ClearHistoryAsync()
+    {
+        if (_userId is null)
+        {
+            return;
+        }
+
+        var removed = await AccountData.ClearHistoryAsync(_userId);
+        Toasts.Success(removed == 1 ? "Removed 1 entry." : $"Removed {removed} entries.");
+        await LoadAsync();
+    }
+
+    private static string FormatDuration(TimeSpan d) =>
+        d.TotalHours >= 1 ? $"{(int)d.TotalHours} h {d.Minutes} min" : $"{Math.Max(1, (int)d.TotalMinutes)} min";
+}

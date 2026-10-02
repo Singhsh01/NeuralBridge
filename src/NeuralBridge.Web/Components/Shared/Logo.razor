@@ -1,0 +1,25 @@
+@* Two device nodes joined by an arc: the bridge. *@
+<span class="logo @Class" aria-label="@(ShowWordmark ? null : "NeuralBridge")" role="@(ShowWordmark ? null : "img")">
+    <svg class="logo-mark" viewBox="0 0 40 40" aria-hidden="true" focusable="false">
+        <defs>
+            <linearGradient id="nb-arc" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0" stop-color="var(--petal)" />
+                <stop offset="1" stop-color="var(--periwinkle)" />
+            </linearGradient>
+        </defs>
+        <path d="M7 27 C 12 9, 28 9, 33 27" fill="none" stroke="url(#nb-arc)" stroke-width="3" stroke-linecap="round" />
+        <path d="M12 27 C 16 17, 24 17, 28 27" fill="none" stroke="url(#nb-arc)" stroke-width="1.6" stroke-linecap="round" opacity=".55" />
+        <circle cx="7" cy="28" r="4" fill="var(--petal)" />
+        <circle cx="33" cy="28" r="4" fill="var(--periwinkle)" />
+    </svg>
+    @if (ShowWordmark)
+    {
+        <span class="logo-word">Neural<span class="logo-word-b">Bridge</span></span>
+    }
+</span>
+
+@code {
+    [Parameter] public bool ShowWordmark { get; set; } = true;
+
+    [Parameter] public string? Class { get; set; }
+}

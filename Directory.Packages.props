@@ -1,0 +1,28 @@
+<Project>
+  <!-- Central package management: all NuGet versions live here. -->
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <!-- Lets the pins below override versions of transitive dependencies. -->
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+    <AspNetCoreVersion>10.0.0</AspNetCoreVersion>
+    <EfCoreVersion>10.0.0</EfCoreVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Persistence -->
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="$(EfCoreVersion)" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="$(EfCoreVersion)" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="$(EfCoreVersion)" />
+    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
+    <!-- Security pin: EF Core 10.0.0's SQLite provider brings SQLitePCLRaw.lib.e_sqlite3 2.1.11, which bundles
+         SQLite < 3.50.2 (CVE-2025-6965 / GHSA-2m69-gcr7-jv3q). 2.1.12+ ships the fixed SQLite. Remove this pin once
+         EF Core references a fixed version itself. -->
+    <PackageVersion Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.1.13" />
+    <!-- Identity / authentication -->
+    <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="$(AspNetCoreVersion)" />
+    <!-- Tests -->
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.4" />
+    <PackageVersion Include="coverlet.collector" Version="6.0.4" />
+  </ItemGroup>
+</Project>

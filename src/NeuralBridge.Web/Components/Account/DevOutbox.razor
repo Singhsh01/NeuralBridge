@@ -1,0 +1,49 @@
+@page "/dev/outbox"
+@using NeuralBridge.Web.Auth
+@inject IServiceProvider Services
+@inject IHostEnvironment Environment
+
+<PageTitle>Development outbox · NeuralBridge</PageTitle>
+
+<div class="page-wide">
+    @if (_outbox is null)
+    {
+        <EmptyState Title="There's nothing at this address" IconName="info" Class="card glass">
+            <Actions><a class="btn btn-primary" href="/">Go to NeuralBridge</a></Actions>
+        </EmptyState>
+    }
+    else
+    {
+        <h1 class="page-title with-icon"><Icon Name="mail" /> Development outbox</h1>
+        <p class="page-lede">Emails the app would send. This page exists only in Development and Testing; configure SMTP for real delivery.</p>
+        @if (_outbox.Messages.Count == 0)
+        {
+            <p class="hint">No messages yet.</p>
+        }
+        <ul class="snippet-list" data-testid="outbox">
+            @foreach (var m in _outbox.Messages)
+            {
+                <li class="card glass" data-testid="outbox-item">
+                    <p><strong>@m.Subject</strong> → @m.To <span class="hint">(@m.SentAt.ToString("u", CultureInfo.InvariantCulture))</span></p>
+                    <pre class="outbox-body">@m.Body</pre>
+                    @if (m.ActionUrl is not null)
+                    {
+                        <a class="btn btn-primary btn-sm" href="@m.ActionUrl" data-testid="outbox-link">Open link</a>
+                    }
+                </li>
+            }
+        </ul>
+    }
+</div>
+
+@code {
+    private OutboxEmailSender? _outbox;
+
+    protected override void OnInitialized()
+    {
+        if (Environment.IsDevelopment() || Environment.IsEnvironment("Testing"))
+        {
+            _outbox = Services.GetService<OutboxEmailSender>();
+        }
+    }
+}

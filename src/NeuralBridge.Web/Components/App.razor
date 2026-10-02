@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="description" content="NeuralBridge moves text, links, prompts and code between your devices in real time through a private, temporary session." />
+    <meta name="referrer" content="no-referrer" />
+    <base href="/" />
+    @* Sets data-theme before first paint (external file: the CSP forbids inline script). *@
+    <script src="@Assets["js/theme-init.js"]"></script>
+    <ResourcePreloader />
+    <link rel="stylesheet" href="@Assets["css/app.css"]" />
+    <link rel="stylesheet" href="@Assets["css/landing.css"]" />
+    <link rel="stylesheet" href="@Assets["css/workspace.css"]" />
+    <link rel="stylesheet" href="@Assets["css/account.css"]" />
+    <link rel="icon" type="image/svg+xml" href="@Assets["img/favicon.svg"]" />
+    <HeadOutlet />
+</head>
+<body>
+    <Routes />
+    <ReconnectModal />
+    <script src="@Assets["_framework/blazor.web.js"]"></script>
+    <script type="module" src="@Assets["js/site.js"]"></script>
+</body>
+</html>

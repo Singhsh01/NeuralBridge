@@ -1,0 +1,124 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@inject ILogger<SharedEditor> Logger
+
+<div class="editor-frame @(CanEdit ? null : "is-readonly")">
+    <label for="shared-editor" class="visually-hidden">Shared text</label>
+    <textarea id="shared-editor"
+              class="editor"
+              @ref="_textarea"
+              maxlength="@MaxLength"
+              spellcheck="false"
+              autocomplete="off"
+              autocapitalize="off"
+              data-gramm="false"
+              placeholder="@(CanEdit ? "Type or paste text, links, prompts or code. Every connected device sees it right away." : "The owner has turned off editing for guests. You can still read and copy.")"
+              aria-describedby="editor-status"></textarea>
+</div>
+
+@code {
+    private ElementReference _textarea;
+    private IJSObjectReference? _module;
+    private IJSObjectReference? _handle;
+    private DotNetObjectReference<SharedEditor>? _self;
+    private bool _readOnlyApplied;
+
+    [Parameter, EditorRequired] public string InitialContent { get; set; } = string.Empty;
+
+    [Parameter] public long InitialVersion { get; set; }
+
+    [Parameter] public bool CanEdit { get; set; } = true;
+
+    [Parameter] public int MaxLength { get; set; } = 50_000;
+
+    /// <summary>Called (debounced) with the full text and the version it was based on.</summary>
+    [Parameter, EditorRequired] public Func<string, long, Task<EditAck>> OnEdit { get; set; } = default!;
+
+    [Parameter] public Func<Task>? OnTyping { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _self = DotNetObjectReference.Create(this);
+            _module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/editor.js");
+            _handle = await _module.InvokeAsync<IJSObjectReference>("attach", _textarea, _self, new
+            {
+                content = InitialContent,
+                version = InitialVersion,
+                debounceMs = 250,
+                typingThrottleMs = 1500,
+                readOnly = !CanEdit,
+                countsRoot = ".workspace",
+            });
+            _readOnlyApplied = !CanEdit;
+            return;
+        }
+
+        if (_handle is not null && _readOnlyApplied != !CanEdit)
+        {
+            _readOnlyApplied = !CanEdit;
+            await SafeAsync(h => h.InvokeVoidAsync("setReadOnly", !CanEdit));
+        }
+    }
+
+    [JSInvokable]
+    public Task<EditAck> OnLocalEdit(string text, long baseVersion) => OnEdit(text ?? string.Empty, baseVersion);
+
+    [JSInvokable("OnTyping")]
+    public Task OnTypingFromBrowser() => OnTyping?.Invoke() ?? Task.CompletedTask;
+
+    /// <summary>Applies a remote version (ignored by the browser if stale or if local edits are pending).</summary>
+    public Task ApplyRemoteAsync(string text, long version) => SafeAsync(h => h.InvokeVoidAsync("applyRemote", text, version));
+
+    /// <summary>Replaces the text unconditionally (e.g. after this participant cleared the document).</summary>
+    public Task SetContentAsync(string text, long version) => SafeAsync(h => h.InvokeVoidAsync("setContent", text, version));
+
+    public Task FocusAsync() => SafeAsync(h => h.InvokeVoidAsync("focus"));
+
+    public async ValueTask DisposeAsync()
+    {
+        await SafeAsync(h => h.InvokeVoidAsync("detach"));
+        try
+        {
+            if (_handle is not null)
+            {
+                await _handle.DisposeAsync();
+            }
+
+            if (_module is not null)
+            {
+                await _module.DisposeAsync();
+            }
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+
+        _self?.Dispose();
+    }
+
+    private async Task SafeAsync(Func<IJSObjectReference, ValueTask> call)
+    {
+        if (_handle is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await call(_handle);
+        }
+        catch (JSDisconnectedException)
+        {
+            // Browser went away; the circuit will be cleaned up.
+        }
+        catch (TaskCanceledException)
+        {
+        }
+        catch (JSException ex)
+        {
+            Logger.LogDebug(ex, "Editor interop call failed");
+        }
+    }
+}

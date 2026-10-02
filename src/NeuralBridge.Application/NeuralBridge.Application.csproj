@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>NeuralBridge.Application</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Options, logging, DI, caching and rate-limiting abstractions ship with the shared framework: no extra NuGet versions to manage. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\NeuralBridge.Domain\NeuralBridge.Domain.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="NeuralBridge.Tests" />
+  </ItemGroup>
+</Project>

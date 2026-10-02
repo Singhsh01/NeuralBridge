@@ -1,0 +1,22 @@
+@page "/join"
+@page "/join/{Code}"
+
+<PageTitle>Join a session · NeuralBridge</PageTitle>
+
+<div class="page-narrow">
+    <section class="card glass form-card" aria-labelledby="join-title">
+        <div class="card-head">
+            <span class="card-icon card-icon-alt" aria-hidden="true"><Icon Name="log-in" /></span>
+            <div>
+                <h1 id="join-title" class="page-title">Join a session</h1>
+                <p class="card-sub">Enter the session ID shown on your other device. If the owner set a PIN, you'll need that too.</p>
+            </div>
+        </div>
+        <JoinForm Code="@Code" @rendermode="InteractiveServer" />
+    </section>
+    <p class="page-aside">Want your own instead? <a href="/#start">Create a session</a>.</p>
+</div>
+
+@code {
+    [Parameter] public string? Code { get; set; }
+}

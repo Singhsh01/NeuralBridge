@@ -1,0 +1,70 @@
+/* Account pages: settings grid, sign-in method rows, danger zone. */
+.auth-page .google-form {
+  margin-bottom: var(--space-2);
+}
+.auth-form {
+  margin-top: var(--space-2);
+}
+.settings-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+}
+.settings-head .page-lede {
+  margin: 0;
+}
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-5);
+  align-items: start;
+}
+.settings-grid .card-title {
+  font-size: var(--step-1);
+  margin-bottom: var(--space-4);
+}
+.method {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--panel-border);
+}
+.method form {
+  margin: 0;
+}
+.method-text {
+  display: grid;
+}
+.method-text .hint {
+  margin: 0;
+}
+.method-form {
+  padding-top: var(--space-4);
+}
+.method-form strong {
+  display: block;
+  margin-bottom: var(--space-3);
+}
+.row-actions {
+  margin-top: var(--space-4);
+}
+.danger-card {
+  border-color: color-mix(in srgb, var(--danger) 35%, transparent);
+}
+.confirm-details > summary {
+  list-style: none;
+  display: inline-flex;
+}
+.confirm-details > summary::-webkit-details-marker {
+  display: none;
+}
+.delete-form {
+  margin-top: var(--space-4);
+}
+@media (max-width: 820px) {
+  .settings-grid {
+    grid-template-columns: 1fr;
+  }
+}

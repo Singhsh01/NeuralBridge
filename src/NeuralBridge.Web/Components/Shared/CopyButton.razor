@@ -1,0 +1,31 @@
+@* Copies on an explicit click, handled in the browser (site.js) so the user gesture is preserved.
+   The copy icon turns into a check mark on success. Provide either Text or TargetSelector. *@
+<button type="button"
+        class="btn btn-copy @Class"
+        data-copy-text="@Text"
+        data-copy-target="@TargetSelector"
+        data-copied-label="@CopiedLabel"
+        data-tip="@Tip"
+        aria-label="@AriaLabel"
+        disabled="@Disabled">
+    <Icon Name="copy" Class="copy-icon" />
+    <span class="copy-label btn-label">@Label</span>
+</button>
+
+@code {
+    [Parameter] public string? Text { get; set; }
+
+    [Parameter] public string? TargetSelector { get; set; }
+
+    [Parameter] public string Label { get; set; } = "Copy";
+
+    [Parameter] public string CopiedLabel { get; set; } = "Copied";
+
+    [Parameter] public string? AriaLabel { get; set; }
+
+    [Parameter] public string? Tip { get; set; }
+
+    [Parameter] public string Class { get; set; } = "btn-quiet";
+
+    [Parameter] public bool Disabled { get; set; }
+}

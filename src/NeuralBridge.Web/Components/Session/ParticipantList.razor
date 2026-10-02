@@ -1,0 +1,57 @@
+@using NeuralBridge.Application.Calls
+
+<section class="panel" aria-labelledby="people-title">
+    <div class="panel-head">
+        <h2 id="people-title" class="panel-title"><Icon Name="users" /> Devices</h2>
+        <span class="panel-meta">@Participants.Count of @MaxParticipants</span>
+    </div>
+    <ul class="people" data-testid="participants">
+        @foreach (var p in Participants)
+        {
+            var call = CallRoster.FirstOrDefault(c => c.ParticipantId == p.Id);
+            <li class="person" @key="p.Id">
+                <span class="presence-dot @(p.IsOnline ? "is-online" : null)" aria-hidden="true"></span>
+                <span class="person-name">@p.DisplayName</span>
+                <span class="visually-hidden">@(p.IsOnline ? "online" : "offline")</span>
+                @if (p.IsYou)
+                {
+                    <span class="tag">you</span>
+                }
+                @if (p.IsOwner)
+                {
+                    <span class="tag tag-owner">owner</span>
+                }
+                @if (call is not null)
+                {
+                    <span class="person-call" data-tip="@($"In the call{(call.AudioEnabled ? "" : ", muted")}{(call.VideoEnabled ? ", camera on" : "")}")" tabindex="0">
+                        <Icon Name="@(call.AudioEnabled ? "mic" : "mic-off")" Class="@(call.AudioEnabled ? null : "is-muted")" />
+                        @if (call.VideoEnabled)
+                        {
+                            <Icon Name="video" />
+                        }
+                        <span class="visually-hidden">in call@(call.AudioEnabled ? "" : ", muted")</span>
+                    </span>
+                }
+                @if (CanRemove && !p.IsOwner && !p.IsYou)
+                {
+                    <button type="button" class="icon-btn icon-btn-sm person-remove" @onclick="() => OnRemove.InvokeAsync(p)"
+                            aria-label="@($"Remove {p.DisplayName}")" data-tip="@($"Remove {p.DisplayName}")">
+                        <Icon Name="user-x" />
+                    </button>
+                }
+            </li>
+        }
+    </ul>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<ParticipantView> Participants { get; set; } = [];
+
+    [Parameter] public int MaxParticipants { get; set; }
+
+    [Parameter] public bool CanRemove { get; set; }
+
+    [Parameter] public EventCallback<ParticipantView> OnRemove { get; set; }
+
+    [Parameter] public IReadOnlyList<CallRosterEntry> CallRoster { get; set; } = [];
+}

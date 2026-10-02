@@ -1,0 +1,46 @@
+@page "/security"
+@page "/privacy"
+
+<PageTitle>Security &amp; privacy · NeuralBridge</PageTitle>
+
+<article class="page-narrow prose card glass">
+    <h1 class="page-title with-icon"><Icon Name="shield-check" /> Security &amp; privacy</h1>
+    <p class="page-lede">NeuralBridge is built to move text between your own devices without keeping it.</p>
+
+    <h2>Shared text</h2>
+    <ul>
+        <li>The text in a session lives in the server's memory only. It's never written to the database, to log files or to analytics.</li>
+        <li>When a session is closed or expires, its text is deleted from memory and every connected device is disconnected.</li>
+        <li>If you're signed in and click <em>Save</em>, a copy is stored in your account until you delete it. Nothing is saved without that click.</li>
+        <li>Shared text is always treated as untrusted plain text. HTML isn't rendered, and links are shown as text and open only when you click them.</li>
+    </ul>
+
+    <h2>Who can join</h2>
+    <ul>
+        <li>Each session has a randomly generated 12-character session ID (about 10<sup>18</sup> possibilities). IDs aren't sequential and can't be guessed from one another.</li>
+        <li>Anyone who knows the ID of an unprotected session can join it until it ends. For sensitive text, set a PIN and share it separately.</li>
+        <li>Too many wrong PINs lock the session's PIN entry for a few minutes, and join attempts are rate-limited.</li>
+        <li>The owner can see every connected device, remove one, make guests read-only, issue a new ID, or close the session at any time.</li>
+    </ul>
+
+    <h2>Audio and video calls</h2>
+    <ul>
+        <li>Calls are peer-to-peer (WebRTC): audio and video travel directly between the browsers in the call, encrypted in transit. The server only passes along the connection setup.</li>
+        <li>Your browser asks before NeuralBridge can use your camera or microphone, and they switch on only when you join a call. Leaving the call or the session switches them off.</li>
+        <li>Calls are never recorded.</li>
+    </ul>
+
+    <h2>Accounts (optional)</h2>
+    <ul>
+        <li>You can use NeuralBridge as a guest. An account adds a list of your sessions, a session history (dates and IDs only, never text) and saved text.</li>
+        <li>With Google sign-in, NeuralBridge receives your name, email address and profile picture. It never accesses your Gmail, Drive or other Google data.</li>
+        <li>Passwords are stored as salted hashes. Repeated wrong passwords temporarily lock the account.</li>
+        <li>You can turn off session history, clear it, sign out of all devices, or delete your account and all its data from <a href="/account/settings">Account settings</a>.</li>
+    </ul>
+
+    <h2>Location</h2>
+    <p>Location is off until you click <em>Show my city</em> and your browser asks for permission. Your position is rounded to about 1&nbsp;km and looked up once to find the city name. It isn't stored or logged. Time and date come from your own device.</p>
+
+    <h2>What NeuralBridge never does</h2>
+    <p>It doesn't read your clipboard in the background, capture your screen, record keystrokes outside its own editor, control other devices, or try to work around company or university security policies.</p>
+</article>

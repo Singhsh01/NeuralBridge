@@ -1,0 +1,210 @@
+@page "/session/{PublicId}"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+
+<PageTitle>@(_snapshot is null ? "Session" : $"Session {_snapshot.FormattedCode}") · NeuralBridge</PageTitle>
+
+<div class="workspace" data-view="@_view.ToString().ToLowerInvariant()">
+    <ToastRegion />
+
+    @switch (_view)
+    {
+        case WorkspaceView.Loading:
+            <div class="workspace-loading">
+                <Spinner Label="Connecting to the session" ShowLabel="true" />
+            </div>
+            break;
+
+        case WorkspaceView.NeedsJoin:
+            <EmptyState Title="Join this session first" Class="workspace-state" IconName="key-round">
+                <ChildContent>
+                    <p>This tab isn't part of the session yet. Enter the session ID (and PIN, if it has one) to join.</p>
+                </ChildContent>
+                <Actions>
+                    <a class="btn btn-primary" href="/join"><Icon Name="log-in" /><span class="btn-label">Enter a session ID</span></a>
+                    <a class="btn btn-quiet" href="/#start"><Icon Name="plus" /><span class="btn-label">Create your own</span></a>
+                </Actions>
+            </EmptyState>
+            break;
+
+        case WorkspaceView.Ended:
+            <EmptyState Title="@EndedTitle" Class="workspace-state" IsAlert="true" IconName="@EndedIcon">
+                <ChildContent>
+                    <p data-testid="session-ended">@EndedMessage</p>
+                </ChildContent>
+                <Actions>
+                    <a class="btn btn-primary" href="/#start"><Icon Name="plus" /><span class="btn-label">Start a new session</span></a>
+                </Actions>
+            </EmptyState>
+            break;
+
+        case WorkspaceView.Removed:
+            <EmptyState Title="You've been removed" Class="workspace-state" IsAlert="true" IconName="user-x">
+                <ChildContent>
+                    <p>The owner removed this device from the session. Its text is no longer available here.</p>
+                </ChildContent>
+                <Actions>
+                    <a class="btn btn-primary" href="/">Back to NeuralBridge</a>
+                </Actions>
+            </EmptyState>
+            break;
+
+        case WorkspaceView.Failed:
+            <EmptyState Title="We couldn't open this session" Class="workspace-state" IsAlert="true" IconName="triangle-alert">
+                <ChildContent>
+                    <p>@_failureMessage</p>
+                </ChildContent>
+                <Actions>
+                    <button type="button" class="btn btn-primary" @onclick="RetryAsync"><Icon Name="refresh-cw" /><span class="btn-label">Try again</span></button>
+                    <a class="btn btn-quiet" href="/">Back home</a>
+                </Actions>
+            </EmptyState>
+            break;
+
+        case WorkspaceView.Ready when _snapshot is not null && _document is not null && _credentials is not null:
+            <header class="ws-header">
+                <div class="ws-title">
+                    <h1 class="ws-heading">
+                        <span class="visually-hidden">Session </span><span class="ws-code" data-testid="header-code">@_snapshot.FormattedCode</span>
+                    </h1>
+                    <CopyButton Text="@_snapshot.FormattedCode" Label="Copy ID" CopiedLabel="Copied" Class="btn-quiet btn-sm" AriaLabel="Copy session ID" Tip="Copy the session ID" />
+                    <span class="chip @(_snapshot.HasPin ? "chip-secure" : "chip-open")" data-testid="security-chip"
+                          data-tip="@(_snapshot.HasPin ? "New devices need the PIN to join" : "Anyone with the session ID can join. Add a PIN for sensitive text.")" tabindex="0">
+                        <Icon Name="@(_snapshot.HasPin ? "lock" : "lock-open")" />
+                        <span>@(_snapshot.HasPin ? "PIN protected" : "No PIN")</span>
+                    </span>
+                </div>
+                <dl class="ws-stats">
+                    <div class="ws-stat">
+                        <dt>Connection</dt>
+                        <dd>
+                            <span class="conn-pill" data-testid="connection-status" tabindex="0" data-tip="Live connection to the session">
+                                <span class="conn-icon" aria-hidden="true">
+                                    <Icon Name="wifi" Class="conn-on" /><Icon Name="wifi-off" Class="conn-off" />
+                                </span>
+                                <span class="conn-online">Live</span>
+                                <span class="conn-reconnecting">Reconnecting</span>
+                                <span class="conn-offline">Offline</span>
+                            </span>
+                        </dd>
+                    </div>
+                    <div class="ws-stat">
+                        <dt>Ends in</dt>
+                        <dd class="with-icon"><Icon Name="timer" /><time data-countdown-to="@_snapshot.ExpiresAt.ToString("O", CultureInfo.InvariantCulture)" data-testid="time-left">…</time></dd>
+                    </div>
+                    <div class="ws-stat">
+                        <dt>Online</dt>
+                        <dd class="with-icon"><Icon Name="users" /><span data-testid="online-count">@_snapshot.OnlineCount</span></dd>
+                    </div>
+                </dl>
+                <button type="button" class="btn btn-quiet btn-sm ws-exit" @onclick="() => _confirmExit = true" data-testid="exit-session" data-tip="Leave this session">
+                    <Icon Name="door-open" /><span class="btn-label">Exit</span>
+                </button>
+            </header>
+
+            <div class="ws-grid">
+                <section class="ws-main" aria-label="Shared text">
+                    <CallPanel @ref="_callPanel" Credentials="_credentials" OnRosterChanged="OnCallRosterChanged" />
+
+                    <div class="ws-toolbar" role="toolbar" aria-label="Text actions">
+                        <CopyButton TargetSelector="#shared-editor" Label="Copy text" CopiedLabel="Text copied" Class="btn-primary btn-sm" AriaLabel="Copy the shared text to your clipboard" Tip="Copy everything in the editor" />
+                        @if (_snapshot.CanEdit)
+                        {
+                            <button type="button" class="btn btn-quiet btn-sm" @onclick="() => _confirmClear = true" data-testid="clear-editor" data-tip="Empty the editor on every device">
+                                <Icon Name="eraser" /><span class="btn-label">Clear</span>
+                            </button>
+                        }
+                        @if (_canSaveToAccount)
+                        {
+                            <button type="button" class="btn btn-quiet btn-sm" @onclick="SaveToAccountAsync" disabled="@_saving" data-tip="Keep a copy in your account">
+                                <Icon Name="bookmark" /><span class="btn-label">Save</span>
+                            </button>
+                        }
+                        <span class="ws-counts" aria-live="off">
+                            <span><span data-count-chars>0</span> characters</span>
+                            <span><span data-count-words>0</span> words</span>
+                            <span class="count-limit" data-count-limit hidden>Limit @_maxLength.ToString("N0", CultureInfo.InvariantCulture)</span>
+                        </span>
+                    </div>
+
+                    <SharedEditor @ref="_editor"
+                                  InitialContent="@_document.Content"
+                                  InitialVersion="@_document.Version"
+                                  CanEdit="@_snapshot.CanEdit"
+                                  MaxLength="@_maxLength"
+                                  OnEdit="HandleLocalEditAsync"
+                                  OnTyping="HandleTypingAsync" />
+
+                    <p id="editor-status" class="ws-status" aria-live="polite">
+                        @if (_typingName is not null)
+                        {
+                            <span class="typing" data-testid="typing-indicator"><span class="typing-dots" aria-hidden="true"><i></i><i></i><i></i></span>@_typingName is editing</span>
+                        }
+                        else if (_lastSyncedAt is { } synced)
+                        {
+                            <span>Synced <time data-relative-time="@synced.ToString("O", CultureInfo.InvariantCulture)">just now</time>@(_lastEditor is null ? null : $" from {_lastEditor}")</span>
+                        }
+                        else
+                        {
+                            <span>Changes sync to every device automatically.</span>
+                        }
+                        @if (!_snapshot.CanEdit)
+                        {
+                            <span class="readonly-note">Read-only: the owner turned off guest editing.</span>
+                        }
+                    </p>
+
+                    <DetectedLinks Links="_links" />
+                </section>
+
+                <aside class="ws-side" aria-label="Session details">
+                    <SharePanel Code="@_snapshot.FormattedCode" ShareUrl="@ShareUrl" HasPin="@_snapshot.HasPin" IsOwner="@_snapshot.IsOwner"
+                                Prominent="@(_snapshot.IsOwner && _snapshot.Participants.Count <= 1)" />
+                    <ParticipantList Participants="_snapshot.Participants" MaxParticipants="_snapshot.MaxParticipants"
+                                     CanRemove="_snapshot.IsOwner" OnRemove="RequestRemove" CallRoster="_callRoster" />
+                    @if (_snapshot.IsOwner)
+                    {
+                        <OwnerControls Snapshot="_snapshot" Credentials="_credentials" OnChanged="RefreshSnapshotAsync" OnAccessLost="HandleAccessLostAsync" />
+                    }
+                </aside>
+            </div>
+
+            <ConfirmDialog @bind-Open="_confirmClear" Title="Clear the text for everyone?" ConfirmLabel="Clear text" OnConfirm="ClearAsync">
+                <p>The editor is emptied on every connected device.</p>
+            </ConfirmDialog>
+
+            <ConfirmDialog @bind-Open="_confirmRemove" Title="@($"Remove {_removeCandidate?.DisplayName}?")" ConfirmLabel="Remove" OnConfirm="RemoveParticipantAsync">
+                <p>They're disconnected right away. To keep them out, also issue a new session ID or set a PIN.</p>
+            </ConfirmDialog>
+
+            @if (_confirmExit)
+            {
+                <div class="dialog-backdrop" @onclick="() => _confirmExit = false"></div>
+                <div class="dialog glass" role="alertdialog" aria-modal="true" aria-labelledby="exit-title" @onkeydown="@(e => { if (e.Key == "Escape") _confirmExit = false; })">
+                    <h2 id="exit-title" class="dialog-title">Exit this session?</h2>
+                    <div class="dialog-body">
+                        @if (_snapshot.IsOwner)
+                        {
+                            <p>You can leave it running for the other devices, or close it for everyone. Closing disconnects every device and deletes the text.</p>
+                        }
+                        else
+                        {
+                            <p>Your seat is freed. You can rejoin with the session ID while it runs.</p>
+                        }
+                    </div>
+                    <div class="dialog-actions">
+                        <button type="button" class="btn btn-quiet" @onclick="() => _confirmExit = false" autofocus>Stay</button>
+                        @if (_snapshot.IsOwner)
+                        {
+                            <button type="button" class="btn btn-quiet" @onclick="ExitKeepRunningAsync" data-testid="exit-keep-running">Leave it running</button>
+                            <button type="button" class="btn btn-danger" @onclick="CloseFromExitAsync" data-testid="exit-close">Close for everyone</button>
+                        }
+                        else
+                        {
+                            <button type="button" class="btn btn-primary" @onclick="LeaveAsync" data-testid="exit-leave">Leave session</button>
+                        }
+                    </div>
+                </div>
+            }
+            break;
+    }
+</div>

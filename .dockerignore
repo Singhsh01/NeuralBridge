@@ -1,0 +1,13 @@
+**/bin
+**/obj
+**/node_modules
+**/*.db*
+**/TestResults
+tests/NeuralBridge.E2ETests
+.git
+.vs
+.idea
+.vscode
+data
+keys
+secrets

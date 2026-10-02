@@ -1,0 +1,12 @@
+@inherits LayoutComponentBase
+
+<a class="skip-link" href="#main">Skip to content</a>
+<Backdrop Full="false" />
+<div class="app-shell">
+    <NavBar />
+    <main id="main" class="app-main" tabindex="-1">
+        @Body
+    </main>
+    <SiteFooter />
+</div>
+<BlazorErrorUi />

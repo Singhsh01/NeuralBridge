@@ -1,0 +1,13 @@
+@* One icon system: Lucide (ISC), served as a single cached SVG sprite. Decorative by default;
+   pass Label when the icon is the only content that conveys meaning. *@
+<svg class="icon @Class" aria-hidden="@(Label is null ? "true" : null)" role="@(Label is null ? null : "img")" aria-label="@Label" focusable="false" data-icon="@Name">
+    <use href="@($"{Assets["icons/lucide.svg"]}#{Name}")"></use>
+</svg>
+
+@code {
+    [Parameter, EditorRequired] public string Name { get; set; } = string.Empty;
+
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter] public string? Label { get; set; }
+}

@@ -1,0 +1,121 @@
+@using NeuralBridge.Web.Auth
+@inject ISessionService Sessions
+@inject SessionCredentialStore CredentialStore
+@inject NavigationManager Navigation
+@inject ClientContext Client
+@inject AuthenticationStateProvider AuthenticationState
+@inject IServiceProvider Services
+
+<section class="card glass create-card" aria-labelledby="create-title">
+    <div class="card-head">
+        <span class="card-icon" aria-hidden="true"><Icon Name="plus" /></span>
+        <div>
+            <h2 id="create-title" class="card-title">Create a session</h2>
+            <p class="card-sub">Get a session ID to open on your other device.</p>
+        </div>
+    </div>
+
+    <form @onsubmit="CreateAsync" @onsubmit:preventDefault novalidate>
+        <fieldset class="form-fieldset" disabled="@(!RendererInfo.IsInteractive || _creating)">
+            <div class="field">
+                <label class="field-label" for="create-name">Your name or device <span class="field-optional">optional</span></label>
+                <input id="create-name" class="input" maxlength="40" autocomplete="off" placeholder="e.g. Home laptop" @bind="_displayName" @bind:event="oninput" data-testid="create-name" />
+            </div>
+
+            <fieldset class="field">
+                <legend class="field-label with-icon"><Icon Name="timer" /> Ends after</legend>
+                <div class="segmented" role="radiogroup">
+                    @foreach (var minutes in _lifetimes)
+                    {
+                        var id = $"life-{minutes}";
+                        <input type="radio" id="@id" name="lifetime" value="@minutes" checked="@(_lifetime == minutes)" @onchange="() => _lifetime = minutes" />
+                        <label for="@id">@FormatLifetime(minutes)</label>
+                    }
+                </div>
+            </fieldset>
+
+            <div class="field">
+                <label class="field-label with-icon" for="create-pin"><Icon Name="lock" /> PIN <span class="field-optional">recommended for sensitive text</span></label>
+                <PinInput Id="create-pin" @bind-Value="_pin" MaxLength="_pinMax" Placeholder="@($"{_pinMin}–{_pinMax} characters")" TestId="create-pin" DescribedBy="create-pin-hint" />
+                <p id="create-pin-hint" class="hint">Share the PIN separately from the session ID.</p>
+            </div>
+
+            @if (_createError is not null)
+            {
+                <p class="form-error" role="alert" data-testid="create-error">@_createError</p>
+            }
+
+            <button type="submit" class="btn btn-primary btn-lg btn-block btn-glow" data-testid="create-session">
+                @if (_creating)
+                {
+                    <Spinner Label="Creating session" />
+                }
+                else
+                {
+                    <Icon Name="plus" />
+                }
+                <span class="btn-label">Create session</span>
+            </button>
+        </fieldset>
+    </form>
+</section>
+
+@code {
+    private IReadOnlyList<int> _lifetimes = [];
+    private int _lifetime;
+    private int _pinMin;
+    private int _pinMax;
+    private string? _displayName;
+    private string? _pin;
+    private bool _creating;
+    private string? _createError;
+
+    protected override void OnInitialized()
+    {
+        var options = NeuralBridge.Application.DependencyInjection.GetSessionOptions(Services);
+        _lifetimes = options.AllowedLifetimes.Select(t => (int)t.TotalMinutes).ToList();
+        _lifetime = options.DefaultLifetimeMinutes;
+        _pinMin = options.PinMinLength;
+        _pinMax = options.PinMaxLength;
+    }
+
+    private async Task CreateAsync()
+    {
+        _creating = true;
+        _createError = null;
+        try
+        {
+            var user = (await AuthenticationState.GetAuthenticationStateAsync()).User;
+            var userId = user.GetUserId();
+            var result = await Sessions.CreateAsync(new CreateSessionCommand(
+                _displayName ?? (userId is null ? null : user.DisplayName()),
+                _pin,
+                _lifetime,
+                userId,
+                Client.ClientKey,
+                RetainHistory: userId is not null && user.KeepsSessionHistory()));
+            if (!result.Succeeded)
+            {
+                _createError = result.Message ?? ErrorMessages.For(result.Error);
+                return;
+            }
+
+            await CredentialStore.SaveAsync(result.Value!.Credentials);
+            Navigation.NavigateTo($"/session/{result.Value.PublicId}");
+        }
+        finally
+        {
+            _creating = false;
+        }
+    }
+
+    internal static string FormatLifetime(int minutes)
+    {
+        if (minutes == 60)
+        {
+            return "1 hour";
+        }
+
+        return minutes % 60 == 0 ? $"{minutes / 60} hours" : $"{minutes} min";
+    }
+}
