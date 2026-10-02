@@ -71,7 +71,10 @@ dotnet tool install --global dotnet-ef   # optional
 ## Quick start
 
 ```bash
-git clone <your-fork-url> neuralbridge && cd neuralbridge
+git clone https://github.com/Singhsh01/NeuralBridge.git
+cd NeuralBridge
+
+dotnet restore
 dotnet restore
 dotnet run --project src/NeuralBridge.Web --launch-profile https
 ```
