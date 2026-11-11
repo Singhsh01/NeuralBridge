@@ -88,9 +88,10 @@ await guest.getByTestId("join-name").fill("Phone");
 await guest.getByTestId("join-session").click();
 await guest.waitForURL(/\/session\//);
 await owner.locator("#shared-editor").fill("Prompt: summarise https://example.org/paper in 5 bullets\n\n- keep the citations\n- plain language");
-await owner.getByTestId("call-video").click();
+// Audio only: Chromium's fake camera is a green test pattern, which doesn't belong in the docs.
+await owner.getByTestId("call-audio").click();
 await settle(owner, 600);
-await guest.getByTestId("call-video").click();
+await guest.getByTestId("call-audio").click();
 await settle(owner, 6000);
 await owner.screenshot({ path: `${out}/workspace-owner-dark.png` });
 await guest.evaluate(() => window.scrollTo(0, 0));

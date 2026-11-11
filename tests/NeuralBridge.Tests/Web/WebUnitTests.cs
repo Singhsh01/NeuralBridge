@@ -116,7 +116,7 @@ public class GlobalRateLimitScopeTests
     [Theory]
     [InlineData("/_framework/blazor.web.abc.js", true)]
     [InlineData("/_blazor/negotiate", true)]
-    [InlineData("/img/wallpaper/wallpaper-landscape-1920.x.avif", true)]
+    [InlineData("/img/background/canyon-1600.x.avif", true)]
     [InlineData("/icons/lucide.svg", true)]
     [InlineData("/Components/Layout/ReconnectModal.abc.razor.js", true)]
     [InlineData("/", false)]

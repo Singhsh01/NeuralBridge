@@ -1,7 +1,7 @@
 # Verification record
 
 What was actually executed for the redesign release (new interface, QR join, download, sync
-status, shortcuts, ending-soon warning, wallpaper and location removal), where, and what was not.
+status, shortcuts, ending-soon warning, removal of the old wallpaper and the location widget, later the canyon background photo), where, and what was not.
 
 ## 1. Cloud sandbox, real packages (this release)
 

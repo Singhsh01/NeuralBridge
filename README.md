@@ -11,7 +11,7 @@ outside its own editor.
 
 ![Landing page](docs/screenshots/landing-light.png)
 
-| A new session, ready to share (light) | Workspace with a video call (dark, signed in) |
+| A new session, ready to share (light) | Workspace in an audio call (dark, signed in) |
 |---|---|
 | ![New session with QR code](docs/screenshots/workspace-share-light.png) | ![Owner workspace](docs/screenshots/workspace-owner-dark.png) |
 
@@ -23,7 +23,7 @@ outside its own editor.
 |---|---|---|
 | ![Log in](docs/screenshots/login.png) | ![Account menu](docs/screenshots/account-menu.png) | ![My sessions](docs/screenshots/my-sessions.png) |
 
-The screenshots use Chromium's fake camera (green test pattern) and the mock Google provider.
+The signed-in screenshots use the mock Google provider described under [Tests](#end-to-end-tests-playwright).
 
 ---
 
@@ -93,8 +93,8 @@ private window and join with the code shown in the first.
 **Try it from your phone on the same network:** run the `lan (other devices)` profile
 (`dotnet run --project src/NeuralBridge.Web --launch-profile "lan (other devices)"`), then open
 `http://<your-computer-ip>:5243` on the phone. Over plain HTTP, browsers block the async
-Clipboard API, so NeuralBridge falls back to a legacy copy method. Use HTTPS for anything
-sensitive.
+Clipboard API, so NeuralBridge falls back to a legacy copy method, and if that is blocked too it
+selects the text so you can press Ctrl/⌘+C. Use HTTPS for anything sensitive.
 
 **No database at all (demo mode):**
 
@@ -239,9 +239,9 @@ Live text is never stored.
 ## Google sign-in (optional)
 
 > This section is for **whoever runs the server**. People using NeuralBridge never see any of
-> it: they click *Continue with Google*, or use email and password, or continue as a guest.
-> Without Google credentials the button is shown disabled with "Google sign-in is not
-> configured." and everything else works.
+> it: they click *Continue with Google*, use email and password, or skip accounts entirely.
+> Without Google credentials the home page leaves Google out, the log-in and registration pages
+> show the button disabled with "Google sign-in is not configured.", and everything else works.
 
 ### 1. Create the OAuth client (once per deployment)
 
@@ -307,8 +307,8 @@ Production).
 ## Audio and video calls
 
 Calls are WebRTC between the browsers in a session (no media goes through the server).
-Camera and microphone are requested only when someone clicks *Join with audio* or *Join with
-video*, and need HTTPS (or `localhost`). Most home and office networks connect with the
+Camera and microphone are requested only when someone clicks *Audio* or *Video* in the call
+panel, and need HTTPS (or `localhost`). Most home and office networks connect with the
 default STUN server. Very restrictive networks (some university or corporate networks)
 need a TURN relay:
 
@@ -330,7 +330,7 @@ dotnet test --collect:"XPlat Code Coverage"  # with coverage
 
 `tests/NeuralBridge.Tests` covers (in addition to the list below): Google OAuth registration (Google endpoints and PKCE in production, test endpoints ignored outside Development/Testing, configurable callback path, CSP `form-action`), partial-configuration validation without leaking values, the public provider status, creating/matching/linking accounts from Google identities (no automatic takeover of password accounts, lockout), avatar URL filtering, startup redirect-URI reporting, calls (roster, media state, cross-session signal rejection, size limits, capacity, leaving after close), account history retention, clearing history and account deletion.
 
-Earlier coverage:
+Also covered:
 
 - **Domain:** codes, lifetime, capacity, PIN lockout, name sanitizing
 - **Security:** CSPRNG code generator (uniqueness, alphabet, distribution), PBKDF2 hasher, tokens, rate limiter
@@ -369,8 +369,7 @@ It covers:
 - calls: two contexts join a PIN-protected session, connect audio/video (real `RTCPeerConnection`s), decoded remote video, mute (red, slashed icon, shown to the other side), camera off, leave releases the camera
 - copy → check icon, keyboard tooltips, the nav's join link, guest Exit, and every same-origin link resolving
 - the workspace features: the QR code (encodes exactly `/join/{ID}`, no PIN or token, and the link prefills the join form), Download (file name and exact contents, no network request), the status pill (pending → synced), shortcuts (Ctrl/⌘+Enter, `?`, `E`, and no stolen keys while typing), the ending-soon banner and one-click extend (using an extra 5-minute session length configured only for the tests), phone layout with collapsed panels, and both themes
-
-- the 11-step brief flow: landing, create, a second context joins, type both ways, copy, close, both see the closed state
+- the full guest flow: landing, create, a second context joins, type both ways, copy, close, both see the closed state
 - debounced typing, clear-with-confirmation, reload resilience, joining without credentials
 - PIN rejection with the anti-enumeration message, code rotation, read-only guests, removing a device
 - an XSS payload stays inert, plus the security headers
@@ -426,7 +425,7 @@ Making them connect to their own hub would mean loopback HTTP clients. The dedic
 `/hubs/session` hub serves non-Blazor clients through the same services, with strict group
 isolation. Both sit behind `ISessionEventBus`, so a Redis backplane can replace it later.
 
-`docs/ARCHITECTURE.md` has the full plan, risks and acceptance criteria. `docs/VERIFICATION.md` records exactly what was built and tested when this project was generated.
+`docs/ARCHITECTURE.md` has the full design, including the frontend, risks and acceptance criteria. `docs/VERIFICATION.md` records which checks were run for each release, where, and their results.
 
 ## Security & privacy
 
@@ -448,8 +447,7 @@ See [`docs/SECURITY.md`](docs/SECURITY.md) for the threat model. Highlights:
 | `The SSL connection could not be established` / browser certificate warning | `dotnet dev-certs https --clean && dotnet dev-certs https --trust`, or use the `http` profile |
 | Startup fails with `OptionsValidationException` | A configuration value is out of range. The message names the key. |
 | `SQLite Error 1: no such table` after adding migrations | Delete `src/NeuralBridge.Web/data/neuralbridge.db` once (it was created by `EnsureCreated`) |
-| "Copy failed" on a phone over `http://192.168…` | Browsers restrict the clipboard on insecure origins. Use HTTPS, or select and copy manually. |
-| "Press Ctrl+C" appears after Copy | The browser blocked clipboard access (insecure origin or permissions). The text is selected for you; press Ctrl/⌘+C. |
+| "Press Ctrl+C" appears after Copy (often on a phone over `http://192.168…`) | The browser blocked clipboard access (insecure origin or permissions). The text is selected for you; press Ctrl/⌘+C, or use HTTPS. |
 | Google button disabled ("Google sign-in is not configured.") | The server has no `Authentication:Google:ClientId`/`ClientSecret`. See [Google sign-in](#google-sign-in-optional). The startup log says which. |
 | `redirect_uri_mismatch` from Google | Register exactly the URI printed in the startup log (`Authorized redirect URI(s) to register for this host: ...`). Scheme, host, port and path must match. |
 | "Google sign-in didn't complete" | The correlation cookie was lost (an `http` origin with `HttpsRedirection=true` in Production, or a proxy without `ForwardedHeadersEnabled`), or the client secret is wrong. The server log has the reason, never the secret. |
@@ -463,7 +461,7 @@ See [`docs/SECURITY.md`](docs/SECURITY.md) for the threat model. Highlights:
 
 - **Single instance.** Live text, presence, the event bus and the per-session locks are in process. Running several instances needs Redis (or similar) behind `IDocumentStore`, `ISessionEventBus`, `IPresenceTracker` and `ISessionLockProvider`, plus sticky sessions for Blazor Server. Restarting the server clears live text by design. Session metadata survives, so participants rejoin into an empty document.
 - **Last-write-wins.** Simultaneous typing in the same moment can overwrite the other person's most recent keystrokes. The seam for OT or a CRDT is `IDocumentMergeStrategy`.
-- **No committed EF migrations.** The project was generated in an environment without NuGet access, so `dotnet ef` couldn't run. Generate them with `scripts/add-initial-migration.*`. Until then, the schema is created with `EnsureCreated`. Migrations are provider-specific: keep a separate set (or migrations assembly) per provider if you use both SQLite and PostgreSQL.
+- **No committed EF migrations yet.** Generate them with `scripts/add-initial-migration.*`. Until then, the schema is created with `EnsureCreated`. Migrations are provider-specific: keep a separate set (or migrations assembly) per provider if you use both SQLite and PostgreSQL.
 - **Guest ownership is per tab.** Closing the owner's tab loses owner controls for a guest session (the session continues until it expires). Signed-in owners can reopen from **My sessions**.
 - **Server-visible content.** Content is encrypted in transit (HTTPS) but is processed in server memory. It is not end-to-end encrypted.
 - **One shared document per session.** There are no tabs or history. A multi-document design is sketched in [`docs/ROADMAP.md`](docs/ROADMAP.md).
@@ -503,7 +501,7 @@ cd tests/NeuralBridge.E2ETests && NB_BASE_URL=http://127.0.0.1:5243 node scripts
 
 The script writes the landing page (dark, light, phone), log in, the account menu, My
 sessions, Account settings, a new session with its QR code, the owner and guest workspaces
-in a video call, and the closed-session state. (These fake values only work against the mock provider.)
+in an audio call (audio only, so no fake-camera test pattern appears), and the closed-session state. (These fake values only work against the mock provider.)
 
 ## License
 
@@ -511,4 +509,4 @@ Fonts are bundled under the SIL Open Font License (see `src/NeuralBridge.Web/www
 The background photo is by Pawel Czerwinski on Unsplash (Unsplash License), in `wwwroot/img/background/`.
 Icons are from Lucide (ISC, `wwwroot/icons/lucide.svg`, rebuilt with `scripts/build-icons.mjs`). The QR encoder is
 qrcode-generator by Kazuhiko Arase (MIT, `wwwroot/js/vendor/`).
-Choose and add a license for the application code before publishing.
+No license has been chosen for the application code yet.
