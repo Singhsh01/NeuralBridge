@@ -35,7 +35,7 @@
   --border-strong: #cbd5e1;
   --text: #0f172a;
   --text-2: #334155;
-  --muted: #64748b;
+  --muted: #475569;
   --faint: #94a3b8;
 
   --accent: #3d4ed8;
@@ -55,6 +55,8 @@
   --danger-soft: #fef2f2;
 
   --editor-bg: #ffffff;
+  /* How much of the theme background covers the photo (checked for text contrast). */
+  --scrim: rgba(248, 250, 252, 0.82);
   --overlay: rgba(15, 23, 42, 0.45);
   --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
   --shadow-md: 0 1px 2px rgba(15, 23, 42, 0.05), 0 6px 16px -6px rgba(15, 23, 42, 0.12);
@@ -127,6 +129,7 @@
     --danger-hover: #fca5a5;
     --danger-soft: rgba(248, 113, 113, 0.12);
     --editor-bg: #0f1726;
+    --scrim: rgba(11, 17, 32, 0.68);
     --overlay: rgba(2, 6, 23, 0.65);
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 20px -8px rgba(0, 0, 0, 0.5);
@@ -160,6 +163,7 @@
   --danger-hover: #fca5a5;
   --danger-soft: rgba(248, 113, 113, 0.12);
   --editor-bg: #0f1726;
+  --scrim: rgba(11, 17, 32, 0.68);
   --overlay: rgba(2, 6, 23, 0.65);
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 20px -8px rgba(0, 0, 0, 0.5);
@@ -189,6 +193,35 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+}
+
+/* The background photo (Antelope Canyon at night, by Pawel Czerwinski on Unsplash) sits on a
+   fixed layer behind everything, under a theme-coloured scrim so text on it keeps WCAG AA
+   contrast. Content that needs calm (forms, the editor, panels) stays on solid surfaces. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-color: var(--bg);
+  background-image:
+    linear-gradient(var(--scrim), var(--scrim)),
+    image-set(url("../img/background/canyon-1600.avif") type("image/avif"), url("../img/background/canyon-1600.webp") type("image/webp"), url("../img/background/canyon-1600.jpg") type("image/jpeg"));
+  background-position: center 38%;
+  background-size: cover;
+  pointer-events: none;
+}
+@media (max-width: 800px) {
+  body::before {
+    background-image:
+      linear-gradient(var(--scrim), var(--scrim)),
+      image-set(url("../img/background/canyon-800.avif") type("image/avif"), url("../img/background/canyon-800.webp") type("image/webp"), url("../img/background/canyon-800.jpg") type("image/jpeg"));
+  }
+}
+@media print {
+  body::before {
+    display: none;
+  }
 }
 h1,
 h2,

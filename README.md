@@ -57,7 +57,7 @@ The screenshots use Chromium's fake camera (green test pattern) and the mock Goo
 - **Owner controls:** close, extend (+15 min / +1 h, capped), remove a device, guest read-only mode, rotate the join code, require/change/remove a PIN.
 - **Audio and video calls** inside a session: device-to-device WebRTC (mesh, up to 6 people by default) with mute, camera on/off, speaking indicators and leave; signaling is relayed only between members of the same session's call.
 - **Optional accounts, never required.** *Continue with Google* (OAuth 2.0 authorization code + PKCE), or email and password with forgot/reset password. Signed-in users get an avatar menu, **My sessions** (running sessions plus history, if they keep it), **Saved** text, and **Account settings** (profile, connect/disconnect Google, password, history on/off, sign out everywhere, delete account). Creating or joining a session never needs one.
-- **Interface:** a calm, solid-colour design system (Instrument Sans for the interface, JetBrains Mono for the editor and codes, one cobalt accent, Lucide icons). The editor takes most of the workspace; sharing, call, people and owner controls sit in collapsible side panels that start closed on phones.
+- **Interface:** a night photo of Antelope Canyon as the page background, under a theme-coloured scrim tuned so text on it meets WCAG AA contrast, with the editor, forms and panels on solid surfaces. Instrument Sans for the interface, JetBrains Mono for the editor and codes, one cobalt accent, Lucide icons. The photo is self-hosted (AVIF/WebP/JPEG, a smaller file on phones), on a fixed layer so it never shifts the layout, and left out when printing. The editor takes most of the workspace; sharing, call, people and owner controls sit in collapsible side panels that start closed on phones.
 - Light and dark themes that follow the system until you pick one (remembered in this browser), reduced-motion support, visible focus, keyboard and touch accessible, responsive from 320 px.
 
 ## Prerequisites
@@ -374,7 +374,7 @@ It covers:
 - debounced typing, clear-with-confirmation, reload resilience, joining without credentials
 - PIN rejection with the anti-enumeration message, code rotation, read-only guests, removing a device
 - an XSS payload stays inert, plus the security headers
-- the landing page: no wallpaper, location prompt or decorative layers (and none of their files requested), create visible without scrolling, hero buttons switching the create/join tabs and focusing the first field, arrow keys between tabs, system light/dark, the theme toggle, no horizontal scroll at 320, 375 and 768 px, keyboard creation
+- the landing page: the background photo served from this origin in AVIF (the smaller file on phones) under the scrim, no layout shift, no location prompt, create visible without scrolling, hero buttons switching the create/join tabs and focusing the first field, arrow keys between tabs, system light/dark, the theme toggle, no horizontal scroll at 320, 375 and 768 px, keyboard creation
 - the JSON API and the SignalR hub via the official JS client: cross-session isolation, no echo to the sender, credentials required, end-of-session notification
 
 HTML report: `npx playwright show-report`.
@@ -508,6 +508,7 @@ in a video call, and the closed-session state. (These fake values only work agai
 ## License
 
 Fonts are bundled under the SIL Open Font License (see `src/NeuralBridge.Web/wwwroot/fonts/LICENSES.md`).
+The background photo is by Pawel Czerwinski on Unsplash (Unsplash License), in `wwwroot/img/background/`.
 Icons are from Lucide (ISC, `wwwroot/icons/lucide.svg`, rebuilt with `scripts/build-icons.mjs`). The QR encoder is
 qrcode-generator by Kazuhiko Arase (MIT, `wwwroot/js/vendor/`).
 Choose and add a license for the application code before publishing.

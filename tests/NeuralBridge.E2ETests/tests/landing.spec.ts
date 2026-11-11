@@ -1,25 +1,46 @@
 import { createSession, expect, newDevice, test, waitForInteractive } from "./helpers";
 
-test("the landing page has no wallpaper, location prompt or decorative layers", async ({ browser, baseURL }) => {
+test("the background photo is self-hosted, scrimmed, and the page asks for no location", async ({ browser, baseURL }) => {
   const d = await newDevice(browser, baseURL!, { viewport: { width: 1440, height: 900 } });
   let asked = false;
   await d.page.exposeFunction("__geoAsked", () => (asked = true));
   await d.page.addInitScript(() => {
     navigator.geolocation.getCurrentPosition = () => (window as unknown as { __geoAsked: () => void }).__geoAsked();
+    (window as unknown as { __cls: number }).__cls = 0;
+    new PerformanceObserver((list) => {
+      for (const e of list.getEntries() as unknown as { value: number; hadRecentInput: boolean }[]) {
+        if (!e.hadRecentInput) (window as unknown as { __cls: number }).__cls += e.value;
+      }
+    }).observe({ type: "layout-shift", buffered: true });
   });
-  const requested: string[] = [];
-  d.page.on("request", (r) => requested.push(r.url()));
+  const photo = d.page.waitForResponse((r) => /\/img\/background\/canyon-1600\.(avif|webp|jpg)$/.test(r.url()));
   await d.page.goto("/");
   await expect(d.page.getByRole("heading", { level: 1 })).toHaveText("Move text between your devices in seconds.");
-  await expect(d.page.locator(".backdrop, [data-local-clock], [data-testid=location-label]")).toHaveCount(0);
-  expect(requested.filter((u) => /wallpaper|geo\.js|landing\.js/.test(u))).toEqual([]);
-  const bg = await d.page.evaluate(() => getComputedStyle(document.body).backgroundImage);
-  expect(bg).toBe("none");
-  // Create and join are both reachable without scrolling on a laptop screen.
+  const res = await photo;
+  expect(res.status()).toBe(200);
+  expect(new URL(res.url()).origin).toBe(baseURL);
+  expect(res.url()).toMatch(/\.avif$/); // Chromium picks the smallest modern format
+  const layer = await d.page.evaluate(() => {
+    const s = getComputedStyle(document.body, "::before");
+    return { position: s.position, image: s.backgroundImage, z: s.zIndex };
+  });
+  expect(layer.position).toBe("fixed");
+  expect(layer.z).toBe("-1");
+  expect(layer.image).toMatch(/^linear-gradient\(rgba\(248, 250, 252, 0\.82\)/); // the scrim sits above the photo
+  // Create is reachable without scrolling, the photo causes no layout shift, and no location is requested.
   await expect(d.page.getByTestId("create-session")).toBeInViewport();
   await d.page.waitForTimeout(500);
+  expect(await d.page.evaluate(() => (window as unknown as { __cls: number }).__cls)).toBeLessThan(0.05);
   expect(asked).toBe(false);
+  await expect(d.page.locator("[data-local-clock], [data-testid=location-label]")).toHaveCount(0);
   expect(d.consoleErrors).toEqual([]);
+});
+
+test("phones get the smaller background photo", async ({ browser, baseURL }) => {
+  const d = await newDevice(browser, baseURL!, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const photo = d.page.waitForResponse((r) => /\/img\/background\/canyon-800\./.test(r.url()));
+  await d.page.goto("/");
+  expect((await photo).status()).toBe(200);
 });
 
 test("hero buttons switch the start panel and focus the first field", async ({ browser, baseURL }) => {

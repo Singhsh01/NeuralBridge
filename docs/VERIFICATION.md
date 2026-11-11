@@ -34,7 +34,7 @@ stops as soon as focus moves anywhere on purpose. After the fix: the tab test 20
 
 New end-to-end coverage in this release (`workspace.spec.ts`, `landing.spec.ts`):
 
-- landing: no wallpaper, location prompt, clock or decorative layers, and none of their files requested; the create button visible without scrolling at 1440×900; hero buttons switch tabs and focus the first field; arrow keys between tabs; system light and dark backgrounds match the tokens
+- landing: the background photo comes from this origin as AVIF (800 px wide on phones), sits on a fixed layer under the scrim and causes no layout shift; no location prompt or clock; the create button visible without scrolling at 1440×900; hero buttons switch tabs and focus the first field; arrow keys between tabs; system light and dark backgrounds match the tokens
 - QR: encodes exactly `<origin>/join/<ID>`, contains neither the PIN nor the workspace token, renders as SVG, and the link prefills the join form on a phone
 - Download: file name `neuralbridge-<ID>-YYYYMMDD-HHmm.txt`, exact UTF-8 contents, no network request
 - status pill: `pending` while an edit is unsent, `synced` after the server acknowledged it
@@ -69,6 +69,17 @@ pinning is on). The second run, unchanged otherwise:
 | 05-sqlite-smoke (SQLite, health, create/join with PIN) | exit 0 |
 | 06-e2e-playwright (full suite, mock Google, in-memory) | **46 passed, 1 skipped** |
 | 07-e2e-sqlite-accounts-no-google (`auth.spec.ts` + `security-and-owner.spec.ts` on SQLite) | **10 passed, 8 skipped** (the Google tests) |
+
+## 2b. Background photo (added after the Mac run)
+
+At the person's request the canyon photo became the page background again, as a fixed CSS layer
+under a theme-coloured scrim (light: 82 % of `#F8FAFC`; dark: 68 % of `#0B1120`). The scrim
+strength was chosen by measuring the photo: for 99.5 % of a blurred copy of the image,
+body text, secondary text and muted text keep at least 4.5:1 (light muted text was darkened to
+`#475569` for this: 4.76:1; dark muted text 4.99:1). After the change, in the cloud: build 0
+warnings / 0 errors, format check exit 0, 182 unit tests passed, Playwright **47 passed,
+1 skipped** (one new test: phones load the 800 px file). The Mac script has not been re-run
+since.
 
 ## 3. Not verified
 
