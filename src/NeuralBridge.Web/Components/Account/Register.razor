@@ -29,17 +29,17 @@
             <EditForm Model="Input" method="post" OnValidSubmit="RegisterAsync" FormName="register" class="auth-form" novalidate>
                 <DataAnnotationsValidator />
                 <div class="field">
-                    <label class="field-label with-icon" for="reg-name"><Icon Name="user" /> Name <span class="field-optional">optional</span></label>
+                    <label class="field-label" for="reg-name">Name <span class="field-optional">optional</span></label>
                     <InputText id="reg-name" class="input" autocomplete="name" maxlength="60" @bind-Value="Input.DisplayName" data-testid="register-name" />
                     <ValidationMessage For="() => Input.DisplayName" class="form-error" />
                 </div>
                 <div class="field">
-                    <label class="field-label with-icon" for="reg-email"><Icon Name="mail" /> Email</label>
+                    <label class="field-label" for="reg-email">Email</label>
                     <InputText id="reg-email" class="input" type="email" autocomplete="email" @bind-Value="Input.Email" data-testid="register-email" />
                     <ValidationMessage For="() => Input.Email" class="form-error" />
                 </div>
                 <div class="field">
-                    <label class="field-label with-icon" for="reg-password"><Icon Name="key-round" /> Password</label>
+                    <label class="field-label" for="reg-password">Password</label>
                     <InputText id="reg-password" class="input" type="password" autocomplete="new-password" @bind-Value="Input.Password" aria-describedby="reg-password-hint" data-testid="register-password" />
                     <p id="reg-password-hint" class="hint">At least @LocalOptions.Value.MinimumPasswordLength characters. A short phrase is easier to remember than symbols.</p>
                     <ValidationMessage For="() => Input.Password" class="form-error" />
@@ -57,7 +57,7 @@
     </ChildContent>
     <Aside>
         <span>Already have one? <a href="@($"/account/login?returnUrl={Uri.EscapeDataString(SafeReturn)}")">Log in</a> · </span>
-        <a href="/#start">Continue as guest</a>
+        <a href="/#create">Continue as guest</a>
     </Aside>
 </AccountShell>
 

@@ -4,7 +4,6 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using NeuralBridge.Application.Calls;
 using NeuralBridge.Application.Documents;
-using NeuralBridge.Application.Location;
 using NeuralBridge.Application.Options;
 using NeuralBridge.Application.Sessions;
 using NeuralBridge.Application.Snippets;
@@ -27,10 +26,6 @@ public static class DependencyInjection
             .Bind(configuration.GetSection(RateLimitOptions.SectionName))
             .ValidateDataAnnotations()
             .ValidateOnStart();
-        services.AddOptions<LocationOptions>()
-            .Bind(configuration.GetSection(LocationOptions.SectionName))
-            .Validate(o => Uri.TryCreate(o.ReverseGeocodingEndpoint, UriKind.Absolute, out var u) && u.Scheme == Uri.UriSchemeHttps, "ReverseGeocodingEndpoint must be an absolute https URL.")
-            .ValidateOnStart();
 
         services.AddOptions<CallOptions>()
             .Bind(configuration.GetSection(CallOptions.SectionName))
@@ -39,7 +34,6 @@ public static class DependencyInjection
             .ValidateOnStart();
 
         services.TryAddSingleton(TimeProvider.System);
-        services.AddMemoryCache();
 
         // Application services are stateless; state lives behind the injected ports.
         services.AddSingleton<SessionCodeAllocator>();
@@ -52,7 +46,6 @@ public static class DependencyInjection
         services.AddSingleton<ISnippetService, SnippetService>();
         services.AddSingleton<IAccountDataService, AccountDataService>();
         services.AddSingleton<ICallService, CallService>();
-        services.AddScoped<ILocationDisplayService, LocationDisplayService>(); // scoped: depends on a typed HttpClient
 
         return services;
     }

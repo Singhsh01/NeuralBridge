@@ -23,8 +23,6 @@ public sealed class RateLimitOptions
     public int DocumentUpdatesPerSecond { get; set; } = 10;
 
     /// <summary>Reverse-geocoding lookups per client per minute.</summary>
-    [Range(1, 1000)]
-    public int LocationLookupsPerMinute { get; set; } = 5;
 
     /// <summary>Sign-in, registration and password-reset attempts per client per minute.</summary>
     [Range(1, 1000)]

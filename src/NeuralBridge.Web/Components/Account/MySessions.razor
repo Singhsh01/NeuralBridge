@@ -20,8 +20,8 @@
 <div class="page-wide">
     <ToastRegion />
     <header class="page-head">
-        <h1 class="page-title with-icon"><Icon Name="history" /> My sessions</h1>
-        <a class="btn btn-primary btn-glow" href="/#start"><Icon Name="plus" /><span class="btn-label">New session</span></a>
+        <h1 class="page-title">My sessions</h1>
+        <a class="btn btn-primary" href="/#create"><Icon Name="plus" /><span class="btn-label">New session</span></a>
     </header>
 
     @if (!_loaded)
@@ -30,8 +30,8 @@
     }
     else
     {
-        <section class="card glass" aria-labelledby="active-title">
-            <h2 id="active-title" class="card-title with-icon"><Icon Name="radio" /> Running now</h2>
+        <section class="card" aria-labelledby="active-title">
+            <h2 id="active-title" class="card-title">Running now</h2>
             @if (_active.Count == 0)
             {
                 <EmptyState Title="No running sessions" IconName="clock">
@@ -46,16 +46,16 @@
                         <li class="session-row" @key="s.PublicId">
                             <div class="session-row-main">
                                 <span class="ws-code">@s.FormattedCode</span>
-                                <span class="hint with-icon">
-                                    <Icon Name="timer" /> Ends in <time data-countdown-to="@s.ExpiresAt.ToString("O", CultureInfo.InvariantCulture)">…</time>
-                                    · <Icon Name="users" /> @s.OnlineParticipants of @s.ActiveParticipants online
-                                    · <Icon Name="@(s.HasPin ? "lock" : "lock-open")" /> @(s.HasPin ? "PIN" : "No PIN")
+                                <span class="hint session-meta">
+                                    <span>Ends in <time data-countdown-to="@s.ExpiresAt.ToString("O", CultureInfo.InvariantCulture)">…</time></span>
+                                    <span>@s.OnlineParticipants of @s.ActiveParticipants online</span>
+                                    <span class="with-icon"><Icon Name="@(s.HasPin ? "lock" : "lock-open")" /> @(s.HasPin ? "PIN protected" : "No PIN")</span>
                                 </span>
                             </div>
                             <div class="session-row-actions">
                                 <a class="btn btn-primary btn-sm" href="@($"/session/{s.PublicId}")"><Icon Name="external-link" /><span class="btn-label">Open</span></a>
-                                <CopyButton Text="@($"{Navigation.BaseUri}join/{s.FormattedCode}")" Label="Copy link" Class="btn-quiet btn-sm" Tip="Copy the join link" />
-                                <button type="button" class="btn btn-quiet btn-sm" @onclick="() => _closing = s"><Icon Name="door-open" /><span class="btn-label">Close</span></button>
+                                <CopyButton Text="@($"{Navigation.BaseUri}join/{s.FormattedCode}")" Label="Copy link" Class="btn-secondary btn-sm" Tip="Copy the join link" />
+                                <button type="button" class="btn btn-secondary btn-sm" @onclick="() => _closing = s"><Icon Name="door-open" /><span class="btn-label">Close</span></button>
                             </div>
                         </li>
                     }
@@ -63,9 +63,9 @@
             }
         </section>
 
-        <section class="card glass" aria-labelledby="history-title">
+        <section class="card" aria-labelledby="history-title">
             <div class="card-head-row">
-                <h2 id="history-title" class="card-title with-icon"><Icon Name="calendar-clock" /> History</h2>
+                <h2 id="history-title" class="card-title">History</h2>
                 @if (_history.Count > 0)
                 {
                     <button type="button" class="btn btn-quiet btn-sm" @onclick="() => _confirmClear = true" data-testid="clear-history"><Icon Name="trash-2" /><span class="btn-label">Clear history</span></button>
@@ -81,7 +81,7 @@
             }
             else
             {
-                <table class="history-table" data-testid="history">
+                <div class="table-scroll"><table class="history-table" data-testid="history">
                     <thead><tr><th scope="col">Session</th><th scope="col">Started</th><th scope="col">Lasted</th><th scope="col">Devices</th><th scope="col">Ended</th></tr></thead>
                     <tbody>
                         @foreach (var h in _history)
@@ -95,7 +95,7 @@
                             </tr>
                         }
                     </tbody>
-                </table>
+                </table></div>
             }
         </section>
     }

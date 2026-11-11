@@ -2,8 +2,8 @@
 
 <PageTitle>Help · NeuralBridge</PageTitle>
 
-<article class="page-narrow prose card glass">
-    <h1 class="page-title with-icon"><Icon Name="circle-help" /> Help</h1>
+<article class="page-doc prose">
+    <h1 class="page-title">Help</h1>
     <p class="page-lede">Everything you need to move text between two screens.</p>
 
     <h2 id="start">Start a session</h2>
@@ -12,6 +12,28 @@
         <li>On the second device, open NeuralBridge, enter the <strong>session ID</strong> (and PIN) under <strong>Join a session</strong>, or open the shared link.</li>
         <li>Type or paste on either screen. Use <strong>Copy text</strong> to put the result on that device's clipboard.</li>
     </ol>
+
+    <h2 id="share">Bring in another device</h2>
+    <ul>
+        <li>Open <strong>Invite a device</strong> in the session. It shows the session ID, the join link and a <strong>QR code</strong>. Scan the code with the other device's camera to open the join link.</li>
+        <li>The QR code and the link contain only the session ID. They never include the PIN or anything that would let someone in without it.</li>
+        <li>If the owner issues a new session ID, the old link and QR code stop working for new devices.</li>
+    </ul>
+
+    <h2 id="workspace">In a session</h2>
+    <ul>
+        <li><strong>Copy text</strong> puts everything in the editor on this device's clipboard. <strong>Download</strong> saves it as a <code>.txt</code> file. Both happen in your browser; nothing extra is stored.</li>
+        <li>The status next to the session ID tells you where your edits are: <strong>Saving…</strong> while a change is on its way, <strong>Synced</strong> once the server has it, <strong>Waiting to send</strong> while the connection is interrupted, and <strong>Reconnecting</strong> or <strong>Offline</strong> when the connection is lost.</li>
+        <li>If two devices type at the same time, the most recent change wins. When your change replaces one that just arrived from another device, the status says <strong>Your edit replaced a newer one</strong> for a moment.</li>
+        <li>Five minutes before a session ends, a banner appears. The owner can extend the session from there or under Owner controls.</li>
+    </ul>
+
+    <h2 id="shortcuts">Keyboard shortcuts</h2>
+    <ul>
+        <li><kbd>E</kbd> goes to the editor and <kbd>Esc</kbd> leaves it.</li>
+        <li><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>Enter</kbd> copies all text, even while you're typing.</li>
+        <li>When you're not typing: <kbd>C</kbd> copies the text, <kbd>L</kbd> copies the join link, <kbd>D</kbd> downloads the text, and <kbd>?</kbd> lists the shortcuts.</li>
+    </ul>
 
     <h2 id="pin">PINs</h2>
     <ul>
@@ -23,16 +45,16 @@
 
     <h2 id="calls">Audio and video calls</h2>
     <ul>
-        <li>In a session, click <strong>Audio call</strong> or <strong>Video call</strong>. Others see the call and can join with one click.</li>
+        <li>In a session, click <strong>Audio</strong> or <strong>Video</strong> in the Call panel. Others see the call and can join with one click.</li>
         <li>Your browser will ask for microphone (and camera) permission the first time. If you said no, allow it in the site settings (the icon next to the address bar) and try again.</li>
-        <li>Use the microphone and camera buttons to mute or turn your camera off; <strong>Leave call</strong> keeps you in the session.</li>
+        <li>Use the microphone and camera buttons to mute or turn your camera off; <strong>Leave</strong> ends your part of the call and keeps you in the session.</li>
         <li>Calls connect devices directly. Very restrictive networks (some company or university Wi-Fi) can block them; the shared text keeps working regardless.</li>
         <li>Calls need a secure connection (an <code>https://</code> address) except on your own computer.</li>
     </ul>
 
     <h2 id="accounts">Accounts</h2>
     <ul>
-        <li>You never need an account. <strong>Continue as guest</strong> goes straight to creating or joining a session.</li>
+        <li>You never need an account. Create or join a session straight from the home page.</li>
         <li>With an account, sessions you create appear in <a href="/account/sessions">My sessions</a>, where you can reopen or close them from any device, and see past sessions.</li>
         <li>Forgot your password? Use <a href="/account/forgot-password">Reset password</a> on the login page.</li>
     </ul>
@@ -40,7 +62,7 @@
     <h2 id="trouble">Troubleshooting</h2>
     <ul>
         <li><strong>"Reconnecting"</strong>: your device lost its connection. NeuralBridge reconnects automatically and keeps what you typed.</li>
-        <li><strong>Copy failed</strong>: some browsers block the clipboard on insecure (<code>http://</code>) addresses. Select the text and copy it manually.</li>
+        <li><strong>Copy failed</strong>: some browsers block the clipboard on insecure (<code>http://</code>) addresses. NeuralBridge then selects the text for you: press <kbd>Ctrl</kbd>+<kbd>C</kbd> or <kbd>⌘</kbd>+<kbd>C</kbd>.</li>
         <li><strong>The session ended</strong>: sessions end when their time runs out or the owner closes them, and the text is deleted. Start a new one.</li>
     </ul>
 

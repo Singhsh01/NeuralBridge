@@ -109,7 +109,6 @@ e2e_sqlite_no_google() {
   ASPNETCORE_ENVIRONMENT=Development \
   ConnectionStrings__Sqlite="Data Source=$dir/accounts.db" \
   NeuralBridge__Hosting__HttpsRedirection=false \
-  NeuralBridge__Location__ReverseGeocodingEnabled=false \
   NeuralBridge__RateLimits__CreateSessionPerMinute=500 NeuralBridge__RateLimits__JoinSessionPerMinute=500 \
   NeuralBridge__RateLimits__AuthenticationAttemptsPerMinute=500 NeuralBridge__RateLimits__HttpRequestsPerMinute=20000 \
   dotnet run --project src/NeuralBridge.Web --no-build --no-launch-profile -- --urls http://127.0.0.1:5292 > "$LOG/07-server.log" 2>&1 &

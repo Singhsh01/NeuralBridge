@@ -22,7 +22,6 @@ services:
       Email__Smtp__Username: ${SMTP_USERNAME:-}
       Email__Smtp__Password: ${SMTP_PASSWORD:-}
       Email__From: ${MAIL_FROM:-}
-      NeuralBridge__Location__UserAgent: ${NB_GEOCODER_USER_AGENT:-NeuralBridge/1.0 (docker; set a contact address)}
     volumes:
       - neuralbridge-data:/app/data
     restart: unless-stopped

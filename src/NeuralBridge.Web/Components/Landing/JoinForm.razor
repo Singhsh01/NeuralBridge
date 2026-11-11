@@ -7,33 +7,33 @@
 <form class="join-form" @onsubmit="JoinAsync" @onsubmit:preventDefault novalidate>
     <fieldset class="form-fieldset" disabled="@(!RendererInfo.IsInteractive || _busy)">
         <div class="field">
-            <label class="field-label with-icon" for="@($"{_id}-code")"><Icon Name="key-round" /> Session ID</label>
+            <label class="field-label" for="@($"{_id}-code")">Session ID</label>
             <input id="@($"{_id}-code")" class="input input-code" autocomplete="off" autocapitalize="characters" spellcheck="false"
                    inputmode="text" maxlength="20" placeholder="XXXX-XXXX-XXXX" @bind="_code" @bind:event="oninput"
                    aria-invalid="@(_error is not null ? "true" : null)" aria-describedby="@($"{_id}-msg")" data-testid="join-code" />
         </div>
         <div class="field">
-            <label class="field-label with-icon" for="@($"{_id}-pin")"><Icon Name="lock" /> PIN <span class="field-optional">only if the session has one</span></label>
+            <label class="field-label" for="@($"{_id}-pin")">PIN <span class="field-optional">only if the session has one</span></label>
             <PinInput Id="@($"{_id}-pin")" @bind-Value="_pin" MaxLength="64" TestId="join-pin" />
         </div>
         <div class="field">
-            <label class="field-label with-icon" for="@($"{_id}-name")"><Icon Name="user" /> Your name <span class="field-optional">optional</span></label>
+            <label class="field-label" for="@($"{_id}-name")">Device name <span class="field-optional">optional</span></label>
             <input id="@($"{_id}-name")" class="input" maxlength="40" autocomplete="off" placeholder="e.g. Work laptop" @bind="_name" @bind:event="oninput" data-testid="join-name" />
         </div>
 
         <p id="@($"{_id}-msg")" class="@(_error is null ? "form-hint" : "form-error")" role="@(_error is null ? null : "alert")" data-testid="join-message">
+            @if (_error is not null)
+            {
+                <Icon Name="circle-alert" />
+            }
             @(_error ?? "Joining doesn't need an account.")
         </p>
 
-        <button type="submit" class="btn btn-secondary btn-lg btn-block" disabled="@(string.IsNullOrWhiteSpace(_code))" data-testid="join-session"
+        <button type="submit" class="btn btn-primary btn-lg btn-block" disabled="@(string.IsNullOrWhiteSpace(_code))" data-testid="join-session"
                 data-tip-disabled="Enter the session ID first">
             @if (_busy)
             {
                 <Spinner Label="Joining" />
-            }
-            else
-            {
-                <Icon Name="log-in" />
             }
             <span class="btn-label">Join session</span>
         </button>

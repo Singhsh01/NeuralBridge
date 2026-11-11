@@ -1,19 +1,14 @@
-@* Shared frame for sign-in pages: card, title, optional status/error banner. *@
-<div class="page-narrow auth-page">
-    <section class="card glass form-card" aria-labelledby="auth-title">
-        <div class="card-head">
-            <span class="card-icon @IconClass" aria-hidden="true"><Icon Name="@IconName" /></span>
-            <div>
-                <h1 id="auth-title" class="page-title">@Title</h1>
-                @if (Subtitle is not null)
-                {
-                    <p class="card-sub">@Subtitle</p>
-                }
-            </div>
-        </div>
+@* Shared frame for sign-in pages: a centred card with title, optional status or error, and an aside. *@
+<div class="page-form auth-page">
+    <section class="card form-card" aria-labelledby="auth-title">
+        <h1 id="auth-title" class="form-card-title">@Title</h1>
+        @if (Subtitle is not null)
+        {
+            <p class="form-card-sub">@Subtitle</p>
+        }
         @if (Error is not null)
         {
-            <p class="banner banner-error" role="alert" data-testid="auth-error"><Icon Name="triangle-alert" /><span>@Error</span></p>
+            <p class="banner banner-error" role="alert" data-testid="auth-error"><Icon Name="circle-alert" /><span>@Error</span></p>
         }
         @if (Status is not null)
         {
@@ -23,7 +18,7 @@
     </section>
     @if (Aside is not null)
     {
-        <div class="page-aside">@Aside</div>
+        <p class="page-aside">@Aside</p>
     }
 </div>
 
@@ -32,6 +27,7 @@
 
     [Parameter] public string? Subtitle { get; set; }
 
+    /// <summary>Kept for callers; the redesigned card no longer shows an icon.</summary>
     [Parameter] public string IconName { get; set; } = "key-round";
 
     [Parameter] public string? IconClass { get; set; }

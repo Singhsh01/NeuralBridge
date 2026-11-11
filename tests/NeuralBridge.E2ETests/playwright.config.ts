@@ -51,7 +51,8 @@ export default defineConfig({
             NeuralBridge__RateLimits__AuthenticationAttemptsPerMinute: "500",
             // Every test runs from 127.0.0.1, so the per-address page budget is raised too.
             NeuralBridge__RateLimits__HttpRequestsPerMinute: "20000",
-            NeuralBridge__Location__ReverseGeocodingEnabled: "false",
+            // An extra 5-minute length, so the "ending soon" banner can be tested without waiting.
+            NeuralBridge__Sessions__AllowedLifetimesMinutes__4: "5",
             Authentication__Google__ClientId: "test-client.apps.googleusercontent.com",
             Authentication__Google__ClientSecret: "test-secret",
             Authentication__Google__TestEndpoints__AuthorizationEndpoint: `${mock}/authorize`,

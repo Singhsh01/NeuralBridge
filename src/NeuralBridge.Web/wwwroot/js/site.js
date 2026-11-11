@@ -2,11 +2,11 @@
 // keeps working after Blazor enhanced navigation and interactive re-renders.
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
-// ---------- Theme ----------
+// ---------- Theme (system by default; an explicit choice is remembered) ----------
 function currentTheme() {
   const explicit = document.documentElement.getAttribute("data-theme");
   if (explicit) return explicit;
-  return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
 document.addEventListener("click", (e) => {
@@ -17,11 +17,25 @@ document.addEventListener("click", (e) => {
   try {
     localStorage.setItem("nb.theme", next);
   } catch {
-    /* ignore */
+    /* storage unavailable: the choice lasts for this page only */
   }
 });
 
-// ---------- Copy to clipboard (explicit click only) ----------
+// ---------- Screen-reader announcements ----------
+let liveRegion;
+function announce(message) {
+  if (!liveRegion || !liveRegion.isConnected) {
+    liveRegion = document.createElement("div");
+    liveRegion.className = "visually-hidden";
+    liveRegion.setAttribute("role", "status");
+    liveRegion.setAttribute("aria-live", "polite");
+    document.body.appendChild(liveRegion);
+  }
+  liveRegion.textContent = "";
+  setTimeout(() => (liveRegion.textContent = message), 30);
+}
+
+// ---------- Copy to clipboard (explicit user action only) ----------
 async function writeClipboard(text) {
   if (navigator.clipboard && window.isSecureContext) {
     await navigator.clipboard.writeText(text);
@@ -40,65 +54,86 @@ async function writeClipboard(text) {
   if (!ok) throw new Error("copy failed");
 }
 
-let liveRegion;
-function announce(message) {
-  if (!liveRegion) {
-    liveRegion = document.createElement("div");
-    liveRegion.className = "visually-hidden";
-    liveRegion.setAttribute("role", "status");
-    liveRegion.setAttribute("aria-live", "polite");
-    document.body.appendChild(liveRegion);
-  }
-  liveRegion.textContent = "";
-  setTimeout(() => (liveRegion.textContent = message), 30);
-}
-
-document.addEventListener("click", async (e) => {
-  const button = e.target.closest("[data-copy-text], [data-copy-target]");
-  if (!button || button.disabled) return;
+async function copyFrom(button) {
   let text = button.getAttribute("data-copy-text");
   const selector = button.getAttribute("data-copy-target");
-  if (text === null && selector) {
-    const source = document.querySelector(selector);
-    text = source ? source.value ?? source.textContent : "";
-  }
+  const source = selector ? document.querySelector(selector) : null;
+  if (text === null && source) text = source.value ?? source.textContent;
   if (text === null) return;
   const label = button.querySelector(".copy-label");
-  const original = label ? label.textContent : null;
+  if (label && button._copyOriginal === undefined) button._copyOriginal = label.textContent;
   const use = button.querySelector("svg.icon use");
-  const originalHref = use ? use.getAttribute("href") : null;
+  if (use && button._copyHref === undefined) button._copyHref = use.getAttribute("href");
   clearTimeout(button._copyTimer);
   try {
+    if (!text.length) {
+      announce("Nothing to copy yet");
+      return;
+    }
     await writeClipboard(text);
     const done = button.getAttribute("data-copied-label") || "Copied";
     button.classList.add("is-copied");
-    if (use && originalHref) use.setAttribute("href", originalHref.replace(/#[^#]+$/, "#check"));
+    if (use && button._copyHref) use.setAttribute("href", button._copyHref.replace(/#[^#]+$/, "#check"));
     if (label) label.textContent = done;
-    announce(text.length ? done : "Nothing to copy yet");
+    announce(done);
   } catch {
+    // The browser refused (permissions, insecure context): select the text so Ctrl/⌘+C works.
     button.classList.add("is-failed");
-    if (label) label.textContent = "Copy failed";
-    announce("Copy failed. Select the text and copy it manually.");
+    if (label) label.textContent = "Press Ctrl+C";
+    if (source && typeof source.select === "function") {
+      source.focus();
+      source.select();
+    }
+    announce("Couldn't copy automatically. The text is selected: press Ctrl+C or ⌘+C.");
   }
   button._copyTimer = setTimeout(() => {
     button.classList.remove("is-copied", "is-failed");
-    if (use && originalHref) use.setAttribute("href", originalHref);
-    if (label && original !== null) label.textContent = original;
-  }, 1800);
+    if (use && button._copyHref) use.setAttribute("href", button._copyHref);
+    if (label && button._copyOriginal !== undefined) label.textContent = button._copyOriginal;
+  }, 2000);
+}
+
+document.addEventListener("click", (e) => {
+  const button = e.target.closest("[data-copy-text], [data-copy-target]");
+  if (button && !button.disabled) copyFrom(button);
 });
 
-// ---------- Local time, countdowns, relative times ----------
-const timeFmt = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" });
-const dateFmt = new Intl.DateTimeFormat(undefined, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+// Read-only fields (join link): select everything on focus so it's easy to copy by hand.
+document.addEventListener("focusin", (e) => {
+  if (e.target.matches?.("input[data-select-on-focus]")) e.target.select();
+});
+
+// ---------- Download the shared text as .txt (done in the browser; nothing is uploaded) ----------
+function download(button) {
+  const source = document.querySelector(button.getAttribute("data-download-target"));
+  if (!source) return;
+  const text = source.value ?? source.textContent ?? "";
+  if (!text.length) {
+    announce("Nothing to download yet");
+    return;
+  }
+  const stamp = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  const name = `${button.getAttribute("data-download-name") || "neuralbridge"}-${stamp.getFullYear()}${pad(stamp.getMonth() + 1)}${pad(stamp.getDate())}-${pad(stamp.getHours())}${pad(stamp.getMinutes())}.txt`;
+  const url = URL.createObjectURL(new Blob([text], { type: "text/plain;charset=utf-8" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  a.hidden = true;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  announce(`Downloaded ${name}`);
+}
+document.addEventListener("click", (e) => {
+  const button = e.target.closest("[data-download-target]");
+  if (button && !button.disabled) download(button);
+});
+
+// ---------- Countdowns and relative times ----------
 const stampFmt = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
 const relFmt = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
-
-function skyPhase(hour) {
-  if (hour >= 5 && hour < 8) return "dawn";
-  if (hour >= 8 && hour < 17) return "day";
-  if (hour >= 17 && hour < 20) return "dusk";
-  return "night";
-}
 
 function formatCountdown(ms) {
   if (ms <= 0) return "0:00";
@@ -110,32 +145,25 @@ function formatCountdown(ms) {
 }
 
 function tick() {
-  const now = new Date();
-  document.querySelectorAll("[data-local-clock]").forEach((el) => {
-    el.textContent = timeFmt.format(now);
-    el.setAttribute("datetime", now.toISOString());
-  });
-  document.querySelectorAll("[data-local-date]").forEach((el) => (el.textContent = dateFmt.format(now)));
-  document.querySelectorAll("[data-local-zone]").forEach((el) => {
-    if (!el.dataset.filled) {
-      el.textContent = Intl.DateTimeFormat().resolvedOptions().timeZone.replace(/_/g, " ");
-      el.dataset.filled = "1";
-    }
-  });
-  document.querySelectorAll("[data-sky]").forEach((el) => (el.dataset.sky = skyPhase(now.getHours())));
+  const now = Date.now();
   document.querySelectorAll("[data-countdown-to]").forEach((el) => {
     const end = Date.parse(el.getAttribute("data-countdown-to"));
     if (Number.isNaN(end)) return;
-    const left = end - now.getTime();
+    const left = end - now;
     el.textContent = formatCountdown(left);
     el.classList.toggle("is-ending", left > 0 && left < 5 * 60 * 1000);
+    el.setAttribute("datetime", new Date(end).toISOString());
     el.setAttribute("title", `Ends ${stampFmt.format(new Date(end))}`);
   });
   document.querySelectorAll("[data-relative-time]").forEach((el) => {
     const t = Date.parse(el.getAttribute("data-relative-time"));
     if (Number.isNaN(t)) return;
-    const secs = Math.round((t - now.getTime()) / 1000);
-    el.textContent = Math.abs(secs) < 5 ? "just now" : Math.abs(secs) < 60 ? relFmt.format(secs, "second") : relFmt.format(Math.round(secs / 60), "minute");
+    const secs = Math.round((t - now) / 1000);
+    el.textContent =
+      Math.abs(secs) < 5 ? "just now"
+      : Math.abs(secs) < 60 ? relFmt.format(secs, "second")
+      : Math.abs(secs) < 3600 ? relFmt.format(Math.round(secs / 60), "minute")
+      : relFmt.format(Math.round(secs / 3600), "hour");
     el.setAttribute("title", stampFmt.format(new Date(t)));
   });
   document.querySelectorAll("[data-local-time]").forEach((el) => {
@@ -153,33 +181,90 @@ document.addEventListener("click", (e) => {
   }
 });
 
-// ---------- Wallpaper (fade in when decoded, particles + parallax on the landing page) ----------
-let landingCleanup = null;
-function revealWallpaper() {
-  document.querySelectorAll("img[data-wallpaper]").forEach((img) => {
-    const done = () => img.closest(".backdrop")?.classList.add("is-loaded");
-    if (img.complete && img.naturalWidth > 0) {
-      (img.decode ? img.decode().catch(() => {}) : Promise.resolve()).then(done);
-    } else {
-      img.addEventListener("load", done, { once: true });
-      img.addEventListener("error", done, { once: true });
-    }
+// ---------- Tabs (landing: Create / Join) ----------
+function selectTab(container, name, { focusInput = false } = {}) {
+  const tabs = [...container.querySelectorAll('[role="tab"]')];
+  const tab = tabs.find((t) => t.dataset.tab === name);
+  if (!tab) return false;
+  tabs.forEach((t) => {
+    const on = t === tab;
+    t.setAttribute("aria-selected", on ? "true" : "false");
+    t.tabIndex = on ? 0 : -1;
+    const panel = document.getElementById(t.getAttribute("aria-controls"));
+    if (panel) panel.hidden = !on;
   });
+  if (focusInput) focusFirstField(document.getElementById(tab.getAttribute("aria-controls")));
+  return true;
 }
 
-async function initLanding() {
-  revealWallpaper();
-  if (landingCleanup) {
-    landingCleanup();
-    landingCleanup = null;
-  }
-  if (!document.querySelector("[data-particles]")) return;
-  const { startLanding } = await import("./landing.js");
-  landingCleanup = startLanding({ reduceMotion: reduceMotion.matches });
+// The forms are interactive islands that may still be starting (disabled fieldset), and
+// <FocusOnNavigate> moves focus to the <h1> after navigation: retry briefly, unless the
+// user has focused something else in the meantime.
+function focusFirstField(panel) {
+  if (!panel) return;
+  clearInterval(focusFirstField.timer);
+  let tries = 0;
+  const start = document.activeElement;
+  const apply = () => {
+    const input = panel.querySelector("input:not([type=radio]):not([disabled])");
+    const active = document.activeElement;
+    if (active === input) return clearInterval(focusFirstField.timer);
+    // Stop as soon as focus lands anywhere else on purpose (Blazor's own move to the <h1> doesn't count).
+    const userMoved = active && active !== start && active !== document.body && active.tagName !== "H1" && !panel.contains(active);
+    if (++tries > 30 || userMoved) return clearInterval(focusFirstField.timer);
+    if (!input) return;
+    input.focus({ preventScroll: true });
+    if (document.activeElement === input) {
+      clearInterval(focusFirstField.timer);
+      if (input.getBoundingClientRect().top < 0 || input.getBoundingClientRect().bottom > window.innerHeight) {
+        input.scrollIntoView({ block: "center", behavior: reduceMotion.matches ? "auto" : "smooth" });
+      }
+    }
+  };
+  apply();
+  focusFirstField.timer = setInterval(apply, 100);
 }
-initLanding();
-onEnhancedLoad(initLanding);
-reduceMotion.addEventListener("change", initLanding);
+
+document.addEventListener("click", (e) => {
+  const tab = e.target.closest('[data-tabs] [role="tab"]');
+  if (tab) {
+    clearInterval(focusFirstField.timer);
+    selectTab(tab.closest("[data-tabs]"), tab.dataset.tab);
+    history.replaceState(null, "", `#${tab.getAttribute("aria-controls")}`);
+    return;
+  }
+  const link = e.target.closest("[data-tab-link]");
+  const container = document.querySelector("[data-tabs]");
+  if (link && container) {
+    e.preventDefault();
+    selectTab(container, link.dataset.tabLink, { focusInput: true });
+    history.replaceState(null, "", `#${link.dataset.tabLink}`);
+  }
+});
+document.addEventListener("keydown", (e) => {
+  const tab = e.target.closest?.('[data-tabs] [role="tab"]');
+  if (!tab || !["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return;
+  const tabs = [...tab.closest('[role="tablist"]').querySelectorAll('[role="tab"]')];
+  clearInterval(focusFirstField.timer); // the person is steering focus themselves
+  let i = tabs.indexOf(tab);
+  i = e.key === "Home" ? 0 : e.key === "End" ? tabs.length - 1 : (i + (e.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
+  e.preventDefault();
+  tabs[i].focus();
+  selectTab(tab.closest("[data-tabs]"), tabs[i].dataset.tab);
+});
+
+// "#join" / "#create" (also the older "#create-name") open the matching tab and focus its first field.
+function syncTabsWithHash() {
+  const container = document.querySelector("[data-tabs]");
+  if (!container) return;
+  const hash = location.hash.replace("#", "");
+  const name = hash === "create-name" ? "create" : hash;
+  if (name === "create" || name === "join") selectTab(container, name, { focusInput: true });
+}
+window.addEventListener("hashchange", syncTabsWithHash);
+onEnhancedLoad(() => setTimeout(syncTabsWithHash, 0));
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", syncTabsWithHash);
+else syncTabsWithHash();
 
 // ---------- Tooltips: one accessible floating tooltip for every [data-tip] (mouse, keyboard, touch) ----------
 const tip = document.createElement("div");
@@ -202,16 +287,11 @@ function showTip(el) {
   el.setAttribute("aria-describedby", tip.id);
   const r = el.getBoundingClientRect();
   const t = tip.getBoundingClientRect();
-  let top = r.top - t.height - 10;
-  let placement = "top";
-  if (top < 8) {
-    top = r.bottom + 10;
-    placement = "bottom";
-  }
+  let top = r.top - t.height - 8;
+  if (top < 8) top = r.bottom + 8;
   const left = Math.min(window.innerWidth - t.width - 8, Math.max(8, r.left + r.width / 2 - t.width / 2));
   tip.style.top = `${top}px`;
   tip.style.left = `${left}px`;
-  tip.dataset.placement = placement;
   tip.classList.add("is-visible");
 }
 
@@ -238,37 +318,20 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") hideTip();
 });
 // Touch: long-press shows the tooltip without triggering the action.
-document.addEventListener("touchstart", (e) => {
-  const el = e.target.closest("[data-tip]");
-  if (!el) return;
-  pressTimer = setTimeout(() => {
-    showTip(el);
-    setTimeout(hideTip, 1800);
-  }, 450);
-}, { passive: true });
+document.addEventListener(
+  "touchstart",
+  (e) => {
+    const el = e.target.closest("[data-tip]");
+    if (!el) return;
+    pressTimer = setTimeout(() => {
+      showTip(el);
+      setTimeout(hideTip, 1800);
+    }, 450);
+  },
+  { passive: true },
+);
 document.addEventListener("touchend", () => clearTimeout(pressTimer), { passive: true });
 window.addEventListener("scroll", hideTip, { passive: true });
-
-// ---------- Press feedback: ripple from the pointer (or the centre for keyboard) ----------
-function ripple(el, x, y) {
-  if (reduceMotion.matches) return;
-  const r = el.getBoundingClientRect();
-  const dot = document.createElement("span");
-  dot.className = "ripple";
-  const size = Math.max(r.width, r.height) * 2;
-  dot.style.width = dot.style.height = `${size}px`;
-  dot.style.left = `${(x ?? r.left + r.width / 2) - r.left - size / 2}px`;
-  dot.style.top = `${(y ?? r.top + r.height / 2) - r.top - size / 2}px`;
-  el.appendChild(dot);
-  dot.addEventListener("animationend", () => dot.remove(), { once: true });
-}
-document.addEventListener("pointerdown", (e) => {
-  const el = e.target.closest(".btn, .icon-btn");
-  if (el && !el.disabled) ripple(el, e.clientX, e.clientY);
-});
-document.addEventListener("keydown", (e) => {
-  if ((e.key === "Enter" || e.key === " ") && e.target.matches?.(".btn, .icon-btn") && !e.target.disabled) ripple(e.target);
-});
 
 // ---------- Loading state for redirecting forms (e.g. Continue with Google) ----------
 document.addEventListener("submit", (e) => {
@@ -306,12 +369,16 @@ document.addEventListener("keydown", (e) => {
     d.querySelector("summary")?.focus();
   });
 });
-document.addEventListener("toggle", (e) => {
-  const d = e.target;
-  if (d.matches?.("details[data-menu]") && d.open) {
-    d.querySelector("[role=menu] a, [role=menu] button")?.focus({ preventScroll: true });
-  }
-}, true);
+document.addEventListener(
+  "toggle",
+  (e) => {
+    const d = e.target;
+    if (d.matches?.("details[data-menu]") && d.open) {
+      d.querySelector("[role=menu] a, [role=menu] button")?.focus({ preventScroll: true });
+    }
+  },
+  true,
+);
 function closeMenus() {
   document.querySelectorAll("details[data-menu][open]").forEach((d) => d.removeAttribute("open"));
 }
@@ -327,43 +394,123 @@ document.addEventListener(
   true,
 );
 
-// ---------- "Continue as guest": jump to the create form and put the cursor in it ----------
-// After a navigation, <FocusOnNavigate> moves focus to the <h1> and the create form may be
-// re-rendered when its interactive island starts, so keep (re)applying focus for a moment,
-// unless the user has meanwhile focused something else themselves.
-let guestFocusTimer = 0;
-function focusFromHash() {
-  clearInterval(guestFocusTimer);
-  if (location.hash !== "#create-name") return;
-  let tries = 0;
-  let scrolled = false;
-  const apply = () => {
-    const input = document.getElementById("create-name");
-    const active = document.activeElement;
-    const userMoved = active && active !== document.body && active.tagName !== "H1" && active.id !== "create-name";
-    if (++tries > 20 || userMoved) return clearInterval(guestFocusTimer);
-    if (!input || active === input) return;
-    if (!scrolled) {
-      input.scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
-      scrolled = true;
-    }
-    input.focus({ preventScroll: true });
-  };
-  apply();
-  guestFocusTimer = setInterval(apply, 100);
+// ---------- Workspace side panels: collapsed on small screens so the editor comes first ----------
+const compact = window.matchMedia("(max-width: 900px)");
+function collapseForSmallScreens(root = document) {
+  root.querySelectorAll?.("details[data-collapse-mobile]:not([data-collapse-applied])").forEach((d) => {
+    d.setAttribute("data-collapse-applied", "");
+    if (compact.matches) d.removeAttribute("open");
+  });
 }
-window.addEventListener("hashchange", focusFromHash);
-onEnhancedLoad(focusFromHash);
+
+// ---------- QR code of the join link (drawn locally when its panel is opened) ----------
+let qrModule;
+async function renderQr(details) {
+  const url = details.getAttribute("data-qr");
+  const target = details.querySelector(".qr-target");
+  if (!url || !target || !details.open || target.dataset.renderedFor === url) return;
+  qrModule ??= import("./vendor/qrcode.mjs");
+  const { default: qrcode } = await qrModule;
+  const qr = qrcode(0, "M");
+  qr.addData(url);
+  qr.make();
+  const n = qr.getModuleCount();
+  const quiet = 2;
+  const size = n + quiet * 2;
+  let path = "";
+  for (let r = 0; r < n; r++) {
+    for (let c = 0; c < n; c++) {
+      if (qr.isDark(r, c)) path += `M${c + quiet} ${r + quiet}h1v1h-1z`;
+    }
+  }
+  const ns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("viewBox", `0 0 ${size} ${size}`);
+  svg.setAttribute("shape-rendering", "crispEdges");
+  svg.setAttribute("aria-hidden", "true");
+  const bg = document.createElementNS(ns, "rect");
+  bg.setAttribute("width", size);
+  bg.setAttribute("height", size);
+  bg.setAttribute("fill", "#fff");
+  const fg = document.createElementNS(ns, "path");
+  fg.setAttribute("d", path);
+  fg.setAttribute("fill", "#0f172a");
+  svg.append(bg, fg);
+  target.replaceChildren(svg);
+  target.dataset.renderedFor = url;
+}
+document.addEventListener(
+  "toggle",
+  (e) => {
+    if (e.target.matches?.("details[data-qr]")) renderQr(e.target);
+  },
+  true,
+);
+
+// Blazor renders the workspace after this module runs (and re-renders it when the session ID
+// changes), so watch for new panels and changed links.
+new MutationObserver((records) => {
+  for (const r of records) {
+    if (r.type === "attributes" && r.target.matches?.("details[data-qr]")) renderQr(r.target);
+    r.addedNodes?.forEach((node) => {
+      if (node.nodeType !== 1) return;
+      collapseForSmallScreens(node.parentElement || node);
+      node.querySelectorAll?.("details[data-qr][open]").forEach(renderQr);
+      if (node.matches?.("details[data-qr][open]")) renderQr(node);
+    });
+  }
+}).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-qr", "open"] });
+
+// ---------- Workspace keyboard shortcuts ----------
+// Single keys only act when focus is not in a text field; Ctrl/⌘+Enter copies all text from
+// anywhere in the workspace (it has no default meaning in a textarea). Browser shortcuts
+// such as Ctrl+C, Ctrl+S or Ctrl+Shift+C are never intercepted.
+function isTyping(el) {
+  return !!el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName));
+}
+function openShortcuts() {
+  const dialog = document.getElementById("shortcuts");
+  if (dialog && !dialog.open) dialog.showModal();
+}
 document.addEventListener("click", (e) => {
-  const link = e.target.closest('a[href$="#create-name"]');
-  if (link && location.pathname === "/" && location.hash === "#create-name") {
-    // Same hash again: hashchange won't fire, so focus directly.
+  if (e.target.closest("[data-shortcuts-open]")) openShortcuts();
+});
+document.addEventListener("keydown", (e) => {
+  const workspace = document.querySelector('.workspace[data-view="ready"]');
+  if (!workspace || e.defaultPrevented) return;
+  const editor = document.getElementById("shared-editor");
+  if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key === "Enter") {
+    const copy = workspace.querySelector('[data-copy-target="#shared-editor"]');
+    if (copy) {
+      e.preventDefault();
+      copyFrom(copy);
+    }
+    return;
+  }
+  if (e.key === "Escape" && document.activeElement === editor) {
+    editor.blur();
+    return;
+  }
+  if (e.ctrlKey || e.metaKey || e.altKey || isTyping(document.activeElement) || document.querySelector("dialog[open], .dialog")) return;
+  const key = e.key.toLowerCase();
+  const click = (selector) => {
+    const el = workspace.querySelector(selector);
+    if (el && !el.disabled) {
+      e.preventDefault();
+      el.click();
+    }
+  };
+  if (key === "e" && editor) {
     e.preventDefault();
-    focusFromHash();
+    editor.focus();
+  } else if (key === "c") click('[data-copy-target="#shared-editor"]');
+  else if (key === "l") click('[data-copy-target="#share-url"]');
+  else if (key === "d") click("[data-download-target]");
+  else if (e.key === "?") {
+    e.preventDefault();
+    openShortcuts();
   }
 });
-if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", focusFromHash);
-else focusFromHash();
 
 /** Runs after each Blazor enhanced navigation (Blazor may finish starting after this module). */
 function onEnhancedLoad(callback) {

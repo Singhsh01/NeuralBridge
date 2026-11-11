@@ -6,7 +6,6 @@ using NeuralBridge.Application.Calls;
 using NeuralBridge.Application.Options;
 using NeuralBridge.Application.Realtime;
 using NeuralBridge.Infrastructure.Hosting;
-using NeuralBridge.Infrastructure.Location;
 using NeuralBridge.Infrastructure.Persistence;
 using NeuralBridge.Infrastructure.Persistence.EntityFramework;
 using NeuralBridge.Infrastructure.Persistence.InMemory;
@@ -45,23 +44,6 @@ public static class DependencyInjection
         else
         {
             EntityFrameworkPersistence.Add(services, configuration, persistence);
-        }
-
-        // Location (reverse geocoding is opt-in per user action and can be disabled globally)
-        var location = configuration.GetSection(LocationOptions.SectionName).Get<LocationOptions>() ?? new LocationOptions();
-        if (location.ReverseGeocodingEnabled)
-        {
-            services.AddHttpClient<IReverseGeocoder, NominatimReverseGeocoder>((sp, http) =>
-            {
-                var o = sp.GetRequiredService<IOptions<LocationOptions>>().Value;
-                http.BaseAddress = new Uri(o.ReverseGeocodingEndpoint);
-                http.Timeout = TimeSpan.FromSeconds(o.TimeoutSeconds);
-                http.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", o.UserAgent);
-            });
-        }
-        else
-        {
-            services.AddSingleton<IReverseGeocoder, DisabledReverseGeocoder>();
         }
 
         // Hosted services: database first, then the periodic sweeper.

@@ -12,7 +12,7 @@
               autocomplete="off"
               autocapitalize="off"
               data-gramm="false"
-              placeholder="@(CanEdit ? "Type or paste text, links, prompts or code. Every connected device sees it right away." : "The owner has turned off editing for guests. You can still read and copy.")"
+              placeholder="@(CanEdit ? "Type or paste text, links or code. Every connected device sees it right away." : "The owner turned off editing for guests. You can still read, copy and download.")"
               aria-describedby="editor-status"></textarea>
 </div>
 
@@ -50,6 +50,7 @@
                 typingThrottleMs = 1500,
                 readOnly = !CanEdit,
                 countsRoot = ".workspace",
+                statusSelector = "#sync-status",
             });
             _readOnlyApplied = !CanEdit;
             return;

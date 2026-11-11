@@ -1,40 +1,52 @@
-import { createSession, expect, newDevice, test } from "./helpers";
+import { createSession, expect, newDevice, test, waitForInteractive } from "./helpers";
 
-test("landing shows local time without asking for location", async ({ browser, baseURL }) => {
-  const d = await newDevice(browser, baseURL!, { timezoneId: "Europe/Berlin", locale: "en-GB" });
+test("the landing page has no wallpaper, location prompt or decorative layers", async ({ browser, baseURL }) => {
+  const d = await newDevice(browser, baseURL!, { viewport: { width: 1440, height: 900 } });
   let asked = false;
   await d.page.exposeFunction("__geoAsked", () => (asked = true));
   await d.page.addInitScript(() => {
-    const original = navigator.geolocation.getCurrentPosition.bind(navigator.geolocation);
-    navigator.geolocation.getCurrentPosition = (...args: Parameters<Geolocation["getCurrentPosition"]>) => {
-      (window as unknown as { __geoAsked: () => void }).__geoAsked();
-      return original(...args);
-    };
+    navigator.geolocation.getCurrentPosition = () => (window as unknown as { __geoAsked: () => void }).__geoAsked();
   });
+  const requested: string[] = [];
+  d.page.on("request", (r) => requested.push(r.url()));
   await d.page.goto("/");
-  await expect(d.page.getByTestId("location-label")).toHaveText("Location not enabled");
-  await expect(d.page.locator("[data-local-clock]")).toHaveText(/^\d{2}:\d{2}/);
-  await expect(d.page.locator("[data-local-zone]")).toHaveText("Europe/Berlin");
-  await d.page.waitForTimeout(1000);
+  await expect(d.page.getByRole("heading", { level: 1 })).toHaveText("Move text between your devices in seconds.");
+  await expect(d.page.locator(".backdrop, [data-local-clock], [data-testid=location-label]")).toHaveCount(0);
+  expect(requested.filter((u) => /wallpaper|geo\.js|landing\.js/.test(u))).toEqual([]);
+  const bg = await d.page.evaluate(() => getComputedStyle(document.body).backgroundImage);
+  expect(bg).toBe("none");
+  // Create and join are both reachable without scrolling on a laptop screen.
+  await expect(d.page.getByTestId("create-session")).toBeInViewport();
+  await d.page.waitForTimeout(500);
   expect(asked).toBe(false);
+  expect(d.consoleErrors).toEqual([]);
 });
 
-test("location is requested only after a click, and the result is shown", async ({ browser, baseURL }) => {
-  const d = await newDevice(browser, baseURL!, { geolocation: { latitude: 48.3984, longitude: 9.9916 } });
-  await d.context.grantPermissions(["geolocation"], { origin: baseURL! });
+test("hero buttons switch the start panel and focus the first field", async ({ browser, baseURL }) => {
+  const d = await newDevice(browser, baseURL!, { viewport: { width: 1280, height: 800 } });
   await d.page.goto("/");
-  await d.page.getByTestId("enable-location").click();
-  // Reverse geocoding is disabled in the test server, so rounded coordinates are expected.
-  await expect(d.page.getByTestId("location-label")).toHaveText(/48\.40° N, 9\.99° E|Ulm/);
+  // Blazor moves focus to the <h1> when it starts (FocusOnNavigate); start once it has.
+  await waitForInteractive(d.page);
+  await d.page.getByTestId("hero-join").click();
+  await expect(d.page.getByRole("tab", { name: "Join a session" })).toHaveAttribute("aria-selected", "true");
+  await expect(d.page.getByTestId("join-code")).toBeFocused();
+  await d.page.getByTestId("hero-create").click();
+  await expect(d.page.getByRole("tab", { name: "Create a session" })).toHaveAttribute("aria-selected", "true");
+  await expect(d.page.locator("#create-name")).toBeFocused();
+  // Arrow keys move between tabs (ARIA tabs pattern).
+  await d.page.getByRole("tab", { name: "Create a session" }).focus();
+  await d.page.keyboard.press("ArrowRight");
+  await expect(d.page.getByRole("tab", { name: "Join a session" })).toBeFocused();
+  await expect(d.page.getByTestId("join-code")).toBeVisible();
 });
 
-test("declined location permission shows a clear fallback", async ({ browser, baseURL }) => {
-  const d = await newDevice(browser, baseURL!);
-  await d.context.clearPermissions();
-  await d.page.goto("/");
-  await d.page.getByTestId("enable-location").click();
-  await expect(d.page.locator(".sky-note")).toContainText(/declined|couldn't determine/);
-  await expect(d.page.getByTestId("location-label")).toHaveText("Location not enabled");
+test("the system colour scheme is followed until the person picks one", async ({ browser, baseURL }) => {
+  for (const scheme of ["light", "dark"] as const) {
+    const d = await newDevice(browser, baseURL!, { colorScheme: scheme });
+    await d.page.goto("/");
+    const bg = await d.page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+    expect(bg, scheme).toBe(scheme === "light" ? "rgb(248, 250, 252)" : "rgb(11, 17, 32)");
+  }
 });
 
 test("theme toggle switches between dark and light", async ({ browser, baseURL }) => {

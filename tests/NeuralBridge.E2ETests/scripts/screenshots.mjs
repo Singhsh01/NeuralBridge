@@ -65,6 +65,20 @@ await owner.getByTestId("create-session").click();
 await owner.waitForURL(/\/session\//);
 const code = (await owner.getByTestId("header-code").textContent()).trim();
 
+// Alone in a new session (light): the share panel leads with the QR code.
+{
+  const page = await (await ctx({ colorScheme: "light" })).newPage();
+  await page.goto("/");
+  await ready(page);
+  await page.getByTestId("create-name").fill("Desk");
+  await page.getByTestId("create-session").click();
+  await page.waitForURL(/\/session\//);
+  await settle(page, 1500);
+  await page.locator("#shared-editor").fill("Meeting notes\n\n- move the launch to Thursday\n- Priya owns the checklist");
+  await settle(page, 1200);
+  await page.screenshot({ path: `${out}/workspace-share-light.png` });
+}
+
 const guest = await (await ctx({ colorScheme: "light", viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })).newPage();
 await guest.goto("/join");
 await ready(guest);
@@ -79,6 +93,8 @@ await settle(owner, 600);
 await guest.getByTestId("call-video").click();
 await settle(owner, 6000);
 await owner.screenshot({ path: `${out}/workspace-owner-dark.png` });
+await guest.evaluate(() => window.scrollTo(0, 0));
+await settle(guest, 300);
 await guest.screenshot({ path: `${out}/workspace-guest-mobile-light.png` });
 
 if (google) {

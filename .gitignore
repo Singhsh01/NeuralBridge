@@ -34,3 +34,4 @@ tests/NeuralBridge.E2ETests/playwright-report/
 tests/NeuralBridge.E2ETests/.playwright/
 node_modules/
 verify-logs/
+scripts/.icons/

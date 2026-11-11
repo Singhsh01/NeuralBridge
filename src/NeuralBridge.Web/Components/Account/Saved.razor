@@ -11,7 +11,7 @@
 
 <div class="page-wide">
     <ToastRegion />
-    <h1 class="page-title with-icon"><Icon Name="bookmark" /> Saved text</h1>
+    <h1 class="page-title">Saved text</h1>
     <p class="page-lede">Text you chose to keep from a session. Nothing appears here unless you click <em>Save</em> in a session.</p>
 
     @if (!_loaded)
@@ -20,7 +20,7 @@
     }
     else if (_snippets.Count == 0)
     {
-        <EmptyState Title="Nothing saved yet" IconName="bookmark" Class="card glass">
+        <EmptyState Title="Nothing saved yet" IconName="bookmark" Class="card">
             <ChildContent><p>In a session, click <em>Save</em> to keep a copy here.</p></ChildContent>
         </EmptyState>
     }
@@ -30,7 +30,7 @@
             @foreach (var s in _snippets)
             {
                 var id = $"snippet-{s.Id:N}";
-                <li class="card glass snippet" @key="s.Id">
+                <li class="card snippet" @key="s.Id">
                     <div class="panel-head">
                         <h2 class="panel-title">@s.Title</h2>
                         <span class="panel-meta"><time data-local-time="@s.CreatedAt.ToString("O", CultureInfo.InvariantCulture)">@s.CreatedAt.ToString("u", CultureInfo.InvariantCulture)</time></span>

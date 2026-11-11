@@ -1,50 +1,65 @@
 # Verification record
 
-What was actually executed for this version (accounts, Google sign-in, calls and the new
-interface), where, and what was not.
+What was actually executed for the redesign release (new interface, QR join, download, sync
+status, shortcuts, ending-soon warning, wallpaper and location removal), where, and what was not.
 
-## 1. macOS with the real packages (primary)
+## 1. Cloud sandbox, real packages (this release)
 
-`scripts/verify-mac.sh` (double-click `Run-Verification.command` in Finder), on a MacBook Air
-(arm64), macOS 26.6.2, .NET SDK 10.0.401, packages restored from nuget.org. Logs are written to
-`verify-logs/`.
+The sandbox has the .NET SDK 10.0.115 and no access to nuget.org, so it restores from an
+offline feed copied from a real NuGet cache (EF Core, Identity, real xUnit and the test SDK).
+Two dev-only package references (`Microsoft.EntityFrameworkCore.Design`,
+`coverlet.collector`) were not in that cache and were removed **in the verification copy
+only**; neither affects the build output or the tests. The SDK's Blazor assets pack was pinned
+to 10.0.12 for the same reason.
 
-| Step | What it runs | Result |
+| Step | Command | Result |
 |---|---|---|
-| 01-restore | `dotnet restore NeuralBridge.sln` | exit 0 |
-| 02-build | `dotnet build` (warnings as errors, latest-recommended analyzers incl. xUnit analyzers) | 0 warnings, 0 errors |
-| 03-format | `dotnet format --verify-no-changes` | exit 0 |
-| 04-unit-tests | `dotnet test` (real xUnit) | **188 passed, 0 failed**, including the 5 EF Core tests on SQLite |
-| 05-sqlite-smoke | the app on SQLite over HTTP: health, home, `/api/auth/providers`, create with PIN, join without/wrong/right PIN | 200, 200, `{"google":false,...}`, created, 404 / 404 / 200; Identity and session tables present |
-| 06-e2e-playwright | full Playwright suite; the config starts the mock OAuth provider and the app (in-memory) | **40 passed**, 1 skipped (the "Google not configured" test, which needs a server without Google; see step 07) |
-| 07-e2e-sqlite-accounts-no-google | the app on **SQLite/EF Core Identity** with Google **not** configured; `auth.spec.ts` + `security-and-owner.spec.ts` | **10 passed**, 8 skipped (the Google tests) — disabled Google button with the explanation, register/log in/wrong password, forgot → reset, delete account, PIN flows |
+| Build | `dotnet build NeuralBridge.sln` (warnings as errors) | 0 warnings, 0 errors |
+| Format | `dotnet format NeuralBridge.sln --verify-no-changes` | exit 0 |
+| Unit tests | `dotnet test NeuralBridge.sln` (real xUnit, EF Core on SQLite included) | **182 passed, 0 failed** (188 before; the 6 location tests were removed with the feature) |
+| End-to-end | `npx playwright test` (the config starts the mock OAuth provider and the app, in-memory, Development) | **46 passed, 1 skipped** (the skipped test needs a server without Google; next row) |
+| Google not configured | app started without `Authentication:Google`, then `NB_EXPECT_GOOGLE=false npx playwright test tests/auth.spec.ts` | **4 passed**, 8 skipped (the Google tests) |
+| Screenshots | `node scripts/screenshots.mjs` against a running instance | 11 images written to `docs/screenshots/`, reviewed by eye |
 
-The first run on the Mac failed at build: two new tests used `.GetAwaiter().GetResult()`, which
-the real xUnit analyzer (xUnit1031) rejects. They were made `async`; one E2E locator matched a
-hidden duplicate of the "not configured" note. Both were fixed and the whole script re-run
-with the results above.
+The full suite was run four times during this release; the last three runs were clean. The
+first run had three failures, all in tests: a locator that matched both "5 min" and "15 min",
+an SVG size read from an attribute the QR code doesn't set, and a heading whose copy changed
+("You were removed from this session"). The tests were corrected, not the assertions relaxed.
 
-## 2. Cloud sandbox (offline copy)
+Repeating the new specs found one real bug: after *Create a session* or *Join a session* in
+the hero, the focus helper kept pulling focus back to the first field for up to three seconds,
+so a keyboard user moving to the tabs straight away lost their place (7 of 20 runs). It now
+stops as soon as focus moves anywhere on purpose. After the fix: the tab test 20/20, and
+`landing.spec.ts` + `workspace.spec.ts` repeated 3 times, 48/48.
 
-The sandbox cannot reach nuget.org, so it builds an offline copy with EF Core and xUnit
-replaced by stubs/a minimal xUnit shim (the Google handler is now the shared-framework OAuth
-handler, so it is **not** stubbed). Results there:
+New end-to-end coverage in this release (`workspace.spec.ts`, `landing.spec.ts`):
 
-- build 0 warnings / 0 errors, `dotnet format --verify-no-changes` exit 0
-- unit tests via the shim: 183 passed (EF tests excluded)
-- `dotnet publish -c Release`, then the full Playwright suite against the published build in the `Testing` environment with the mock provider: 40 passed, 1 skipped
-- the same suite against `dotnet run` (Development): 40 passed, 1 skipped
-- Google not configured (`NB_EXPECT_GOOGLE=false`): the disabled-button test passed
-- Production with `ExpectedInProduction=true` and no credentials: startup warning logged, no values
-- only one of ClientId/ClientSecret set: startup stops with `Authentication:Google needs both ClientId and ClientSecret, or neither.`; the value does not appear in the output
-- logs from the E2E runs contain neither the test client ID/secret nor names, emails or PINs used in the tests
+- landing: no wallpaper, location prompt, clock or decorative layers, and none of their files requested; the create button visible without scrolling at 1440×900; hero buttons switch tabs and focus the first field; arrow keys between tabs; system light and dark backgrounds match the tokens
+- QR: encodes exactly `<origin>/join/<ID>`, contains neither the PIN nor the workspace token, renders as SVG, and the link prefills the join form on a phone
+- Download: file name `neuralbridge-<ID>-YYYYMMDD-HHmm.txt`, exact UTF-8 contents, no network request
+- status pill: `pending` while an edit is unsent, `synced` after the server acknowledged it
+- shortcuts: Ctrl/⌘+Enter copies all; `?`, `d` typed in the editor stay text; `?` opens the list outside the editor, Escape closes it, `E` focuses the editor
+- ending soon: a 5-minute session (an extra length configured only in `playwright.config.ts`) shows the banner to owner and guest; only the owner gets the extend button; extending hides it
+- phone: editor in view first, side panels collapsed and expandable, no horizontal scroll
+- both themes: the workspace renders without console errors or CSP violations
 
-The WebRTC call test was also run 5 times in a row after the negotiation fix (5/5 passed).
+Contrast was checked by calculation for the main token pairs (WCAG relative luminance):
+body text, muted text, accent buttons, links, success, warning and danger all reach 4.5:1 in
+both themes; the dark accent was darkened from `#5b6cf0` (4.33:1 with white) to `#5262ea`
+(4.89:1) and placeholders moved from the faint to the muted colour as a result.
+
+## 2. macOS (previous release)
+
+The previous release was verified on the Mac with `scripts/verify-mac.sh`
+(`Run-Verification.command`): restore, build, format, 188 unit tests, a SQLite smoke test,
+40 E2E tests plus the no-Google run on SQLite. **This release has not been run on the Mac
+yet** (the computer was not reachable from the session at the end of the work). Run
+`Run-Verification.command` once to confirm; the expected results are the counts in section 1.
 
 ## 3. Not verified
 
-- **Real Google accounts.** No real OAuth client credentials were configured, so the redirect to `accounts.google.com` and back was **not** exercised against Google. It was exercised end to end against the mock provider (same ASP.NET Core OAuth handler, PKCE, state, token exchange, userinfo), and unit tests check that production uses Google's published endpoints.
-- **Calls across real networks.** Calls were tested between browser contexts on one machine with Chromium's fake camera and microphone. NAT traversal between different networks, TURN, Safari/Firefox and real devices were not tested.
-- **Real SMTP.** Password-reset email was tested through the Development outbox only.
-- **PostgreSQL** and **`docker compose`** were not run.
-- Real reverse geocoding (Nominatim) was not reachable from the test environments; the rounded-coordinates fallback was exercised.
+- **Real Google accounts.** No real OAuth client was configured. Sign-in was exercised end to end against the mock provider (same ASP.NET Core OAuth handler, PKCE, state, token exchange, userinfo).
+- **Real devices and browsers.** Phone layouts were tested with Chromium's mobile emulation at 320, 375 and 390 px. Safari, Firefox, real phones and scanning the QR code with a real camera were not tested.
+- **Screen readers.** Roles, names and focus order are asserted in tests; no screen reader session (VoiceOver, NVDA) was run.
+- **Calls across real networks**, **real SMTP**, **PostgreSQL** and **`docker compose`** were not run.
+- **Offline state.** The *Reconnecting*/*Offline* labels follow Blazor's reconnect events; dropping the connection was not simulated in a test.

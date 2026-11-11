@@ -34,6 +34,9 @@ public sealed partial class Workspace : IAsyncDisposable
 {
     private static readonly TimeSpan TypingIndicatorDuration = TimeSpan.FromSeconds(3);
 
+    /// <summary>How long before the end the "ending soon" banner appears.</summary>
+    private static readonly TimeSpan ExpiryWarningLead = TimeSpan.FromMinutes(5);
+
     private readonly string _originId = $"circuit-{Guid.NewGuid():N}";
     private readonly CancellationTokenSource _disposed = new();
 
@@ -48,6 +51,11 @@ public sealed partial class Workspace : IAsyncDisposable
     private bool _confirmExit;
     private IDisposable? _subscription;
     private ITimer? _expiryTimer;
+    private ITimer? _warningTimer;
+    private bool _endingSoon;
+    private DateTimeOffset? _warningDismissedFor;
+    private bool _extending;
+    private int _quickExtendMinutes;
     private SessionEndReason _endReason;
     private string? _failureMessage;
     private string? _typingName;
@@ -107,8 +115,15 @@ public sealed partial class Workspace : IAsyncDisposable
         ? "Its time ran out, so every device was disconnected and the shared text was deleted from the server."
         : "The owner closed it, so every device was disconnected and the shared text was deleted from the server.";
 
-    protected override void OnInitialized() =>
-        _maxLength = NeuralBridge.Application.DependencyInjection.GetSessionOptions(Services).MaxContentLength;
+    /// <summary>Shown in the last minutes of a session, until dismissed for that end time.</summary>
+    private bool ShowExpiryWarning => _endingSoon && _snapshot is not null && _warningDismissedFor != _snapshot.ExpiresAt;
+
+    protected override void OnInitialized()
+    {
+        var options = NeuralBridge.Application.DependencyInjection.GetSessionOptions(Services);
+        _maxLength = options.MaxContentLength;
+        _quickExtendMinutes = options.ExtensionSteps.Select(t => (int)t.TotalMinutes).FirstOrDefault();
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -213,6 +228,7 @@ public sealed partial class Workspace : IAsyncDisposable
 
         _snapshot = snapshot.Value!;
         ScheduleExpiryCheck(_snapshot.ExpiresAt);
+        ScheduleExpiryWarning(_snapshot.ExpiresAt);
         return true;
     }
 
@@ -527,12 +543,69 @@ public sealed partial class Workspace : IAsyncDisposable
             Timeout.InfiniteTimeSpan);
     }
 
+    private void ScheduleExpiryWarning(DateTimeOffset expiresAt)
+    {
+        _warningTimer?.Dispose();
+        var due = expiresAt - ExpiryWarningLead - Time.GetUtcNow();
+        _endingSoon = due <= TimeSpan.Zero;
+        if (_endingSoon)
+        {
+            return;
+        }
+
+        _warningTimer = Time.CreateTimer(
+            _ => _ = InvokeAsync(() =>
+            {
+                _endingSoon = true;
+                StateHasChanged();
+            }),
+            null,
+            due,
+            Timeout.InfiniteTimeSpan);
+    }
+
+    private void DismissExpiryWarning() => _warningDismissedFor = _snapshot?.ExpiresAt;
+
+    /// <summary>One-click extension from the "ending soon" banner (owners only; same rules as Owner controls).</summary>
+    private async Task QuickExtendAsync()
+    {
+        if (_credentials is null || _quickExtendMinutes <= 0)
+        {
+            return;
+        }
+
+        _extending = true;
+        try
+        {
+            var result = await Owner.ExtendAsync(_credentials, _quickExtendMinutes, _disposed.Token);
+            if (result.Succeeded)
+            {
+                Toasts.Success($"Added {OwnerControls.FormatMinutes(_quickExtendMinutes)}.");
+                await RefreshSnapshotAsync();
+            }
+            else if (result.Error is SessionError.Expired or SessionError.Closed or SessionError.Removed or SessionError.Unauthorized)
+            {
+                await HandleAccessLostAsync(result.Error);
+            }
+            else
+            {
+                Toasts.Error(result.Message ?? ErrorMessages.For(result.Error));
+            }
+        }
+        finally
+        {
+            _extending = false;
+        }
+    }
+
     private async Task TearDownAsync()
     {
         _subscription?.Dispose();
         _subscription = null;
         _expiryTimer?.Dispose();
         _expiryTimer = null;
+        _warningTimer?.Dispose();
+        _warningTimer = null;
         await Presence.LeaveAsync();
     }
 

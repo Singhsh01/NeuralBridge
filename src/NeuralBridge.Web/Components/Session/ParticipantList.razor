@@ -1,10 +1,12 @@
 @using NeuralBridge.Application.Calls
 
-<section class="panel" aria-labelledby="people-title">
-    <div class="panel-head">
-        <h2 id="people-title" class="panel-title"><Icon Name="users" /> Devices</h2>
-        <span class="panel-meta">@Participants.Count of @MaxParticipants</span>
-    </div>
+<details class="panel side-section" open data-collapse-mobile>
+    <summary class="side-summary">
+        <span class="panel-title"><Icon Name="users" /> Devices</span>
+        <span class="panel-meta">@Participants.Count(p => p.IsOnline) online · @Participants.Count of @MaxParticipants</span>
+        <Icon Name="chevron-down" Class="side-chevron" />
+    </summary>
+    <div class="side-body">
     <ul class="people" data-testid="participants">
         @foreach (var p in Participants)
         {
@@ -42,7 +44,8 @@
             </li>
         }
     </ul>
-</section>
+    </div>
+</details>
 
 @code {
     [Parameter, EditorRequired] public IReadOnlyList<ParticipantView> Participants { get; set; } = [];

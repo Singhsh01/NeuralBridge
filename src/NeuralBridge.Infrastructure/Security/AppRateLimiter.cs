@@ -20,7 +20,6 @@ public sealed class AppRateLimiter : IAppRateLimiter, IDisposable
         {
             [RateLimitPolicy.CreateSession] = PerMinute(o.CreateSessionPerMinute),
             [RateLimitPolicy.JoinSession] = PerMinute(o.JoinSessionPerMinute),
-            [RateLimitPolicy.LocationLookup] = PerMinute(o.LocationLookupsPerMinute),
             [RateLimitPolicy.Authentication] = PerMinute(o.AuthenticationAttemptsPerMinute),
             [RateLimitPolicy.CallSignal] = PerSecondBucket(o.CallSignalsPerSecond),
             [RateLimitPolicy.DocumentUpdate] = PerSecondBucket(o.DocumentUpdatesPerSecond),

@@ -1,316 +1,270 @@
 /* ==========================================================================
-   Landing: content occupies the open black space on the left; the sculpture
-   glows on the right; the time card floats over its reflection.
+   Landing page: a statement and the start panel side by side, so creating or
+   joining needs no scrolling; then how it works, privacy, and accounts.
    ========================================================================== */
 
 .landing {
-  position: relative;
-  padding-bottom: var(--space-8);
+  width: 100%;
 }
 
 .hero {
-  max-width: var(--max-width);
-  margin: 0 auto;
-  min-height: min(78vh, 760px);
-  padding: clamp(var(--space-6), 9vh, var(--space-9)) var(--gutter) var(--space-6);
   display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(280px, 0.95fr);
-  gap: var(--space-6);
-  align-items: end;
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 440px);
+  gap: clamp(32px, 6vw, 96px);
+  align-items: center;
+  width: min(100% - 2 * var(--gutter), var(--max-width));
+  margin: 0 auto;
+  padding: clamp(40px, 10vh, 112px) 0 clamp(48px, 10vh, 112px);
 }
-
-.hero-logo .logo-mark {
-  width: 60px;
-  height: 60px;
-  margin-bottom: var(--space-4);
-  filter: drop-shadow(0 0 22px color-mix(in srgb, var(--petal) 55%, transparent));
-}
-
-.hero-copy {
-  align-self: center;
-}
-
 .hero-title {
-  font-size: var(--step-hero);
-  font-weight: 760;
-  font-stretch: 78%;
-  line-height: 0.98;
-  letter-spacing: -0.03em;
-  max-width: 13ch;
-  margin-bottom: var(--space-5);
-  text-wrap: balance;
-  text-shadow: 0 2px 30px rgba(0, 0, 0, 0.5);
+  max-width: 15ch;
+  font-size: var(--text-hero);
+  font-weight: 650;
+  font-stretch: 94%;
+  line-height: 1.04;
+  letter-spacing: -0.035em;
 }
-
 .hero-lede {
-  font-size: var(--step-1);
-  line-height: 1.5;
-  color: var(--text-muted);
-  max-width: 33rem;
-  margin-bottom: var(--space-5);
+  max-width: 46ch;
+  margin-top: var(--s-5);
+  color: var(--text-2);
+  font-size: var(--text-md);
+  line-height: 1.6;
+}
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-3);
+  margin-top: var(--s-8);
+}
+.hero-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2) var(--s-5);
+  margin: var(--s-6) 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+.hero-facts li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.hero-facts .icon {
+  width: 14px;
+  height: 14px;
+  color: var(--success);
 }
 
-.hero-aside {
-  justify-self: end;
-  align-self: end;
-  width: min(100%, 340px);
+/* ---------- Start panel (tabs: create / join) ---------- */
+.start-panel {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
 }
-
-/* ---------- Time & place card (weather-app inspired) ---------- */
-.sky-card {
-  --sky-tint: rgba(159, 178, 255, 0.16);
+.tabs {
+  display: flex;
+  gap: var(--s-1);
+  padding: 6px 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+.tab {
   position: relative;
-  padding: var(--space-5) var(--space-5) var(--space-4);
-  text-align: center;
-  color: #fff;
-  background:
-    radial-gradient(120% 80% at 50% 0%, var(--sky-tint), transparent 70%),
-    rgba(18, 16, 40, 0.42);
-  border-color: rgba(255, 255, 255, 0.16);
+  flex: 1;
+  height: 42px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: color var(--fast);
 }
-.sky-card[data-sky="dawn"] {
-  --sky-tint: rgba(246, 187, 162, 0.22);
+.tab:hover {
+  color: var(--text);
 }
-.sky-card[data-sky="day"] {
-  --sky-tint: rgba(159, 178, 255, 0.24);
+.tab[aria-selected="true"] {
+  color: var(--text);
 }
-.sky-card[data-sky="dusk"] {
-  --sky-tint: rgba(196, 92, 162, 0.24);
+.tab[aria-selected="true"]::after {
+  content: "";
+  position: absolute;
+  right: 12px;
+  bottom: -1px;
+  left: 12px;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: var(--accent);
 }
-.sky-card[data-sky="night"] {
-  --sky-tint: rgba(139, 108, 224, 0.2);
+.tab:focus-visible {
+  outline-offset: -2px;
 }
-.sky-place {
-  justify-content: center;
-  width: 100%;
-  font-family: var(--font-display);
-  font-size: var(--step-1);
-  font-weight: 560;
-  margin: 0;
+.tab-panel {
+  padding: var(--s-6);
 }
-.sky-place .icon,
-.sky-date .icon,
-.sky-zone .icon {
-  color: var(--periwinkle);
+.tab-panel:focus {
+  outline: none;
 }
-.sky-time {
-  font-family: var(--font-display);
-  font-size: clamp(3.6rem, 2.8rem + 3vw, 5.4rem);
-  font-weight: 240;
-  font-stretch: 88%;
-  line-height: 1;
-  letter-spacing: -0.04em;
-  margin: var(--space-2) 0;
-  font-variant-numeric: tabular-nums;
-}
-.sky-date,
-.sky-zone {
-  justify-content: center;
-  width: 100%;
-  margin: 0;
-  color: rgba(255, 255, 255, 0.86);
-  font-size: var(--step--1);
-}
-.sky-zone {
-  margin-bottom: var(--space-3);
-  color: rgba(255, 255, 255, 0.7);
-}
-.sky-actions {
-  display: grid;
-  justify-items: center;
-  gap: var(--space-2);
-  padding-top: var(--space-3);
-  border-top: 1px solid rgba(255, 255, 255, 0.16);
-}
-.sky-note {
-  margin: 0;
-  font-size: var(--step--1);
-  color: rgba(255, 255, 255, 0.88);
-}
-.sky-privacy {
-  margin: var(--space-3) 0 0;
-  font-size: 0.76rem;
-  line-height: 1.45;
-  color: rgba(255, 255, 255, 0.68);
+.tab-intro {
+  margin-bottom: var(--s-4);
+  color: var(--muted);
+  font-size: var(--text-sm);
 }
 
-/* ---------- Create / Join / Account cards ---------- */
-.start {
-  max-width: var(--max-width);
-  margin: 0 auto var(--space-8);
-  padding: 0 var(--gutter);
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-5);
-  align-items: start;
-  scroll-margin-top: 90px;
-}
-.start .card {
-  height: 100%;
-  animation: rise 0.7s var(--ease) both;
-}
-.start .card:nth-child(2) {
-  animation-delay: 0.08s;
-}
-.start .card:nth-child(3) {
-  animation-delay: 0.16s;
-}
-@keyframes rise {
-  from {
-    opacity: 0;
-    transform: translateY(14px);
-  }
-}
-.account-card-actions {
-  display: grid;
-  gap: var(--space-2);
-}
-.account-card .google-form {
-  margin-bottom: var(--space-2);
-}
-
-/* ---------- How it works (a real sequence, so it's numbered) ---------- */
-.how,
-.privacy-strip {
-  max-width: var(--max-width);
+/* ---------- Sections below the fold ---------- */
+.section {
+  width: min(100% - 2 * var(--gutter), var(--max-width));
   margin: 0 auto;
-  padding: 0 var(--gutter);
+  padding: var(--s-16) 0;
+  border-top: 1px solid var(--border);
 }
 .section-title {
-  font-size: var(--step-3);
-  font-stretch: 85%;
-  margin-bottom: var(--space-5);
+  font-size: var(--text-xl);
+  font-weight: 650;
+  letter-spacing: -0.02em;
 }
+
+/* How it works: a real sequence, so the steps are numbered. */
 .steps {
-  list-style: none;
-  padding: 0;
-  margin: 0 0 var(--space-8);
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-6);
+  gap: var(--s-8);
+  margin: var(--s-8) 0 0;
+  padding: 0;
+  list-style: none;
   counter-reset: step;
 }
 .step {
   counter-increment: step;
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--glass-border);
-  color: var(--text-muted);
+  color: var(--muted);
+  font-size: var(--text-sm);
+  line-height: 1.6;
 }
 .step::before {
   content: counter(step);
-  display: block;
-  font-family: var(--font-display);
-  font-size: var(--step-4);
-  font-weight: 250;
-  line-height: 1;
-  color: var(--petal);
-  margin-bottom: var(--space-3);
-}
-.step:nth-child(2)::before {
-  color: var(--violet);
-}
-.step:nth-child(3)::before {
-  color: var(--periwinkle);
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin-bottom: var(--s-4);
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  color: var(--text);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 .step-title {
-  font-size: var(--step-1);
+  margin-bottom: 6px;
+  font-size: var(--text-base);
 }
 
-.privacy-strip {
-  padding: clamp(var(--space-5), 5vw, var(--space-7));
-  margin-inline: max(var(--gutter), calc((100% - var(--max-width)) / 2 + var(--gutter)));
+/* Privacy facts */
+.privacy {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: var(--s-12);
 }
-.privacy-points {
-  list-style: none;
-  padding: 0;
-  margin: 0 0 var(--space-5);
+.privacy-intro p {
+  margin-top: var(--s-3);
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+.facts {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-5) var(--space-6);
-  color: var(--text-muted);
-}
-.privacy-points li {
-  display: flex;
-  gap: var(--space-3);
-}
-.privacy-points li > .icon {
-  width: 22px;
-  height: 22px;
-  margin-top: 3px;
-  color: var(--secondary);
-}
-.privacy-points strong {
-  display: block;
-  color: var(--text-strong);
-  font-family: var(--font-display);
-  font-size: var(--step-1);
-  font-weight: 600;
-  margin-bottom: var(--space-1);
-}
-.privacy-links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-5);
+  gap: var(--s-8) var(--s-10);
   margin: 0;
 }
-.privacy-links a {
-  display: inline-flex;
+.fact dt {
+  display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: 8px;
+  color: var(--text);
+  font-weight: 600;
+}
+.fact dt .icon {
+  color: var(--accent-text);
+}
+.fact dd {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+}
+
+/* Accounts */
+.accounts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-6);
+}
+.accounts-text {
+  max-width: 60ch;
+}
+.accounts-text p {
+  margin-top: var(--s-2);
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+.accounts-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+}
+.accounts-actions .google-form {
+  margin: 0;
 }
 
 /* ---------- Responsive ---------- */
-@media (max-width: 1100px) {
-  .start {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .account-card {
-    grid-column: 1 / -1;
-  }
-  .account-card-actions {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 820px) {
+@media (max-width: 960px) {
   .hero {
     grid-template-columns: 1fr;
-    min-height: 0;
-    align-items: start;
+    gap: var(--s-8);
+    padding-top: var(--s-10);
   }
-  .hero-aside {
-    justify-self: stretch;
+  .hero-copy {
+    max-width: 640px;
+  }
+  .start-panel {
     width: 100%;
-    max-width: 420px;
+    max-width: 560px;
   }
-  .start,
-  .steps,
-  .privacy-points,
-  .account-card-actions {
+  .privacy {
     grid-template-columns: 1fr;
+    gap: var(--s-6);
   }
 }
-
-@media (orientation: portrait) and (max-width: 820px) {
-  /* Leave the sculpture visible between the headline and the cards. */
+@media (max-width: 720px) {
+  .steps,
+  .facts {
+    grid-template-columns: 1fr;
+    gap: var(--s-6);
+  }
+  .section {
+    padding: var(--s-10) 0;
+  }
+}
+@media (max-width: 480px) {
   .hero {
-    padding-top: var(--space-6);
+    padding-top: var(--s-6);
   }
-  .hero-aside {
-    margin-top: 28vh;
+  .hero-actions .btn {
+    flex: 1;
   }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .start .card {
-    animation: none;
+  .tab-panel {
+    padding: var(--s-5);
   }
-}
-
-.account-guest-note {
-  margin: 0;
-  text-align: center;
-}
-.btn-block .btn-label {
-  white-space: normal;
+  .segmented label {
+    font-size: var(--text-xs);
+  }
 }

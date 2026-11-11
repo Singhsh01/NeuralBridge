@@ -2,7 +2,6 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NeuralBridge.Application.Abstractions;
 using NeuralBridge.Application.Documents;
-using NeuralBridge.Application.Location;
 using NeuralBridge.Application.Options;
 using NeuralBridge.Application.Realtime;
 using NeuralBridge.Application.Sessions;
@@ -36,7 +35,6 @@ public sealed class TestApp : IDisposable
             CreateSessionPerMinute = 1000,
             JoinSessionPerMinute = 1000,
             DocumentUpdatesPerSecond = 1000,
-            LocationLookupsPerMinute = 1000,
         };
         configureRateLimits?.Invoke(RateLimitOptions);
 
@@ -68,9 +66,6 @@ public sealed class TestApp : IDisposable
         Cleanup = new SessionCleanupService(Store, Locks, Documents, Presence, Bus, Time, sessionOptions, NullLogger<SessionCleanupService>.Instance);
         SnippetRepository = new InMemorySnippetRepository();
         Snippets = new SnippetService(SnippetRepository, Sync, Time, sessionOptions, NullLogger<SnippetService>.Instance);
-        Geocoder = new FakeGeocoder();
-        MemoryCache = new MemoryCache(new MemoryCacheOptions());
-        Location = new LocationDisplayService(Geocoder, RateLimiter, MemoryCache, MsOptions.Create(new LocationOptions()), NullLogger<LocationDisplayService>.Instance);
     }
 
     public FakeTimeProvider Time { get; } = new();
@@ -113,12 +108,6 @@ public sealed class TestApp : IDisposable
 
     public SnippetService Snippets { get; }
 
-    public FakeGeocoder Geocoder { get; }
-
-    public MemoryCache MemoryCache { get; }
-
-    public LocationDisplayService Location { get; }
-
     public IReadOnlyList<T> NotificationsOf<T>()
         where T : SessionNotification
     {
@@ -151,23 +140,6 @@ public sealed class TestApp : IDisposable
     public void Dispose()
     {
         RateLimiter.Dispose();
-        MemoryCache.Dispose();
-    }
-}
-
-public sealed class FakeGeocoder : IReverseGeocoder
-{
-    public GeoPlace? Next { get; set; } = new("Ulm", "Baden-Württemberg", "Germany", "DE");
-
-    public int Calls { get; private set; }
-
-    public (double Lat, double Lon)? LastQuery { get; private set; }
-
-    public Task<GeoPlace?> ReverseAsync(double latitude, double longitude, CancellationToken cancellationToken = default)
-    {
-        Calls++;
-        LastQuery = (latitude, longitude);
-        return Task.FromResult(Next);
     }
 }
 

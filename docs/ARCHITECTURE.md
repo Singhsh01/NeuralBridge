@@ -38,14 +38,14 @@ URLs automatically.
 ┌───────────────▼──────────── NeuralBridge.Application ─────────────────────────────┐
 │ SessionService · SessionOwnerService · SessionAuthorizationService                │
 │ TextSynchronizationService (+ IDocumentMergeStrategy) · SessionCleanupService     │
-│ SnippetService · LocationDisplayService · DTOs · Options · abstractions (ports)   │
+│ SnippetService · DTOs · Options · abstractions (ports)                            │
 └───────────────┬───────────────────────────────────────────────────────────────────┘
                 │ implements ports
 ┌───────────────▼──────────── NeuralBridge.Infrastructure ──────────────────────────┐
 │ Security: SessionCodeGenerator (CSPRNG), Pbkdf2SecretHasher, TokenService         │
 │ Realtime: InMemorySessionEventBus, InMemoryPresenceTracker, InMemoryDocumentStore │
 │ Persistence: EF Core (SQLite / PostgreSQL) + InMemory provider                    │
-│ Identity: ApplicationUser, EF Identity stores · Location: Nominatim geocoder       │
+│ Identity: ApplicationUser, EF Identity stores                                     │
 │ Hosted: SessionCleanupHostedService                                               │
 └───────────────┬───────────────────────────────────────────────────────────────────┘
 ┌───────────────▼──────────── NeuralBridge.Domain ──────────────────────────────────┐
@@ -97,11 +97,12 @@ NeuralBridge/
 ├─ src/
 │  ├─ NeuralBridge.Domain/          Sessions/, Documents/, Snippets/, Common/
 │  ├─ NeuralBridge.Application/     Abstractions/, Options/, Sessions/, Documents/, Realtime/,
-│  │                                Snippets/, Location/, DependencyInjection.cs
+│  │                                Snippets/, DependencyInjection.cs
 │  ├─ NeuralBridge.Infrastructure/  Security/, Realtime/, Persistence/{InMemory,EntityFramework}/,
-│  │                                Identity/, Location/, Hosting/, DependencyInjection.cs
+│  │                                Identity/, Hosting/, DependencyInjection.cs
 │  └─ NeuralBridge.Web/             Components/{Layout,Pages,Session,Landing,Shared}/, Hubs/,
-│                                   Api/, Auth/, Security/, Infrastructure/, wwwroot/{css,js,fonts}
+│                                   Api/, Auth/, Security/, Infrastructure/,
+│                                   wwwroot/{css,js,js/vendor,fonts,icons,img}
 └─ tests/
    ├─ NeuralBridge.Tests/           xUnit unit + service-level integration tests
    └─ NeuralBridge.E2ETests/        Playwright (Node/TypeScript) browser + API tests
@@ -120,7 +121,7 @@ NeuralBridge/
 | CSRF | Blazor SSR forms use antiforgery; logout is POST + antiforgery; JSON APIs don't use cookie auth |
 | Clickjacking | `frame-ancestors 'none'` + `X-Frame-Options: DENY` |
 | Code leaking through Referer | `Referrer-Policy: no-referrer` |
-| Sensitive data in logs | Structured logs carry internal ids and outcomes only; never content, codes, PINs, tokens or coordinates |
+| Sensitive data in logs | Structured logs carry internal ids and outcomes only; never content, codes, PINs or tokens |
 | Secrets in source control | Google credentials only through user secrets or environment variables; `.gitignore` excludes `*.db`, keys, `secrets.json` |
 | DoS through huge payloads | Max content length (50k chars) enforced client- and server-side; circuit/hub receive-size limits; per-connection update rate limit |
 | Stale sessions | Lazy expiry check on every access plus a background sweeper; content purge; metadata deleted after retention |
@@ -147,10 +148,8 @@ NeuralBridge/
   (GUIDs) are never shown. The workspace URL uses a separate random public id.
 - Guest owners prove ownership with the participant token issued at creation. Losing the
   tab (sessionStorage) loses guest ownership. Signed-in owners can reopen from "My sessions".
-- The city is resolved only after the user clicks "Enable location" and the browser grants
-  permission. Coordinates are rounded to about 1 km and reverse-geocoded server-side through
-  OpenStreetMap Nominatim. This can be disabled in configuration, and then only rounded
-  coordinates and the time zone are shown. No weather is shown or claimed.
+- The app shows no location, local time or weather. The earlier location widget was removed in
+  the redesign because it did not help anyone move text between devices.
 - The Playwright suite is written in TypeScript (`@playwright/test`). It works on every OS
   and doesn't need the Playwright .NET package.
 
@@ -166,3 +165,14 @@ NeuralBridge/
 - `ICallService` (Application) authorizes every operation with the participant's credentials, tracks members in `ICallRegistry` (in memory) and publishes `CallStateChangedNotification` / `CallSignalNotification` on the session event bus.
 - The Blazor circuit relays signals to `CallPanel`, which drives `wwwroot/js/call.js`: a WebRTC mesh using the perfect-negotiation pattern (the first offer always comes from the impolite peer, signals are processed in order, and a watchdog renegotiates with an ICE restart if a handshake is lost).
 - `CallJanitorHostedService` clears a call when its session ends or a participant is removed.
+
+## Frontend
+
+The interface is server-rendered Blazor with interactive islands; there is no client framework.
+
+- **Design system** (`wwwroot/css/app.css`): tokens on `:root` (colour, type, spacing, radii, shadows, motion) with a dark set under `prefers-color-scheme` and `[data-theme]`, so the system choice applies until the person picks one in the nav (stored in `localStorage` as `nb.theme`, a per-browser convenience only). Page styles live in `landing.css`, `workspace.css` and `account.css`. Fonts are self-hosted (Instrument Sans for the interface, JetBrains Mono for the editor and codes). Icons come from one Lucide sprite generated by `scripts/build-icons.mjs`.
+- **Layouts:** `MainLayout` (nav, content, footer) for every page except the workspace, which uses `WorkspaceLayout` (no footer, full height) so the editor can fill the screen.
+- **Workspace:** a header (session ID, security chip, status pill, time left, online count, shortcuts, exit), an optional ending-soon banner, the toolbar and editor, and a side column of `<details>` panels (share, call, people, owner controls). On screens up to 900 px the side column moves below the editor and the share (once another device has joined), people and owner panels start collapsed.
+- **Sync status:** `editor.js` sets `data-state` on `#sync-status` (`synced`, `pending`, `retry`, `conflict`, `readonly`) from what the server actually acknowledged; `ReconnectModal.razor.js` sets `data-connection` on `<html>` (`reconnecting`, `offline`), which overrides it. CSS shows the matching label.
+- **Ending soon:** `Workspace.razor.cs` schedules a timer for five minutes before `ExpiresAt` (re-armed after every snapshot refresh, so extensions reset it). The owner's one-click extend calls the same `SessionOwnerService.ExtendAsync` as the owner panel.
+- **Browser-only features** (`site.js`): copy with a select-and-press-Ctrl+C fallback, `.txt` download from a `Blob`, the QR code (vendored `qrcode-generator`, drawn as SVG paths so the strict CSP needs no inline styles or data URLs), ARIA tabs on the landing page, tooltips, relative times and keyboard shortcuts. Single-key shortcuts are ignored while focus is in a text field or a dialog is open.

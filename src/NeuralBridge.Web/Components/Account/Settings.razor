@@ -43,8 +43,8 @@
     @if (_user is not null)
     {
         <div class="settings-grid">
-            <section class="card glass" aria-labelledby="profile-title">
-                <h2 id="profile-title" class="card-title with-icon"><Icon Name="user" /> Profile</h2>
+            <section class="card" aria-labelledby="profile-title">
+                <h2 id="profile-title" class="card-title">Profile</h2>
                 <EditForm Model="Profile" method="post" OnValidSubmit="SaveProfileAsync" FormName="profile" novalidate>
                     <DataAnnotationsValidator />
                     <div class="field">
@@ -57,8 +57,8 @@
                 </EditForm>
             </section>
 
-            <section class="card glass" aria-labelledby="signin-title">
-                <h2 id="signin-title" class="card-title with-icon"><Icon Name="key-round" /> Sign-in methods</h2>
+            <section class="card" aria-labelledby="signin-title">
+                <h2 id="signin-title" class="card-title">Sign-in methods</h2>
 
                 <div class="method">
                     <div class="method-text">
@@ -68,7 +68,7 @@
                     @if (_hasGoogle)
                     {
                         <EditForm Model="Unlink" method="post" OnSubmit="UnlinkGoogleAsync" FormName="unlink">
-                            <button type="submit" class="btn btn-quiet btn-sm" disabled="@(!_hasPassword)" data-tip-disabled="Set a password first so you can still sign in" data-testid="unlink-google">Disconnect</button>
+                            <button type="submit" class="btn btn-secondary btn-sm" disabled="@(!_hasPassword)" data-tip-disabled="Set a password first so you can still sign in" data-testid="unlink-google">Disconnect</button>
                         </EditForm>
                     }
                     else if (Providers.GoogleAvailable)
@@ -97,13 +97,13 @@
                             <InputText id="pw-new" class="input" type="password" autocomplete="new-password" @bind-Value="Password.New" />
                             <ValidationMessage For="() => Password.New" class="form-error" />
                         </div>
-                        <button type="submit" class="btn btn-quiet btn-sm"><Icon Name="key-round" /><span class="btn-label">@(_hasPassword ? "Change password" : "Add password")</span></button>
+                        <button type="submit" class="btn btn-secondary btn-sm"><Icon Name="key-round" /><span class="btn-label">@(_hasPassword ? "Change password" : "Add password")</span></button>
                     </EditForm>
                 }
             </section>
 
-            <section class="card glass" aria-labelledby="privacy-settings-title">
-                <h2 id="privacy-settings-title" class="card-title with-icon"><Icon Name="history" /> Session history</h2>
+            <section class="card" aria-labelledby="privacy-settings-title">
+                <h2 id="privacy-settings-title" class="card-title">Session history</h2>
                 <p class="hint">
                     When on, sessions you create stay in <a href="/account/sessions">My sessions</a> for @SessionOptions.Value.AccountHistoryRetentionDays days after they end:
                     the session ID, dates and number of devices. Never the text.
@@ -115,21 +115,21 @@
                         <span class="control-label">Keep session history</span>
                     </label>
                     <div class="row-actions">
-                        <button type="submit" class="btn btn-quiet btn-sm" data-testid="history-save"><Icon Name="check" /><span class="btn-label">Save</span></button>
+                        <button type="submit" class="btn btn-secondary btn-sm" data-testid="history-save"><Icon Name="check" /><span class="btn-label">Save</span></button>
                     </div>
                 </EditForm>
             </section>
 
-            <section class="card glass" aria-labelledby="security-title">
-                <h2 id="security-title" class="card-title with-icon"><Icon Name="shield" /> Security</h2>
+            <section class="card" aria-labelledby="security-title">
+                <h2 id="security-title" class="card-title">Security</h2>
                 <p class="hint">Signs you out on every device and browser, including this one. Useful after using a shared computer.</p>
                 <EditForm Model="SignOutAll" method="post" OnSubmit="SignOutEverywhereAsync" FormName="signout-all">
-                    <button type="submit" class="btn btn-quiet btn-sm" data-testid="signout-everywhere"><Icon Name="log-out" /><span class="btn-label">Sign out everywhere</span></button>
+                    <button type="submit" class="btn btn-secondary btn-sm" data-testid="signout-everywhere"><Icon Name="log-out" /><span class="btn-label">Sign out everywhere</span></button>
                 </EditForm>
             </section>
 
-            <section class="card glass danger-card" aria-labelledby="delete-title">
-                <h2 id="delete-title" class="card-title with-icon"><Icon Name="trash-2" /> Delete account</h2>
+            <section class="card danger-card" aria-labelledby="delete-title">
+                <h2 id="delete-title" class="card-title">Delete account</h2>
                 <p class="hint">
                     Closes your running sessions (disconnecting everyone in them), deletes your session history and saved text,
                     and removes your account. This can't be undone.

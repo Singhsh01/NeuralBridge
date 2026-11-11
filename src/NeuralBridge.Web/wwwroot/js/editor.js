@@ -9,10 +9,14 @@
 //    local text is sent next and becomes the newest version);
 //  - setting textarea.value programmatically never fires "input", so remote text can't echo
 //    back to the server. The server also excludes the originating circuit from broadcasts.
+//  - the sync state is mirrored to a status element (data-state): synced, pending, retry,
+//    conflict (a newer remote version arrived while local edits were unsent; under
+//    last-write-wins the local text replaced it) and readonly. Nothing claims "synced"
+//    until the server has acknowledged the latest text.
 
 export function attach(textarea, dotnet, options) {
   const opts = Object.assign(
-    { content: "", version: 0, debounceMs: 250, typingThrottleMs: 1500, readOnly: false, countsRoot: null },
+    { content: "", version: 0, debounceMs: 250, typingThrottleMs: 1500, readOnly: false, countsRoot: null, statusSelector: null },
     options || {}
   );
   const state = {
@@ -23,7 +27,16 @@ export function attach(textarea, dotnet, options) {
     timer: 0,
     lastTyping: 0,
     disposed: false,
+    overwrote: false,
+    conflictTimer: 0,
+    sync: "synced",
   };
+
+  function setSync(next) {
+    state.sync = next;
+    const el = opts.statusSelector && document.querySelector(opts.statusSelector);
+    if (el) el.setAttribute("data-state", textarea.readOnly && next === "synced" ? "readonly" : next);
+  }
 
   textarea.value = opts.content || "";
   setReadOnly(opts.readOnly);
@@ -55,6 +68,7 @@ export function attach(textarea, dotnet, options) {
     if (textarea.readOnly) return;
     state.dirty = true;
     updateCounts();
+    if (state.sync !== "retry") setSync("pending");
     schedule(opts.debounceMs);
     const now = Date.now();
     if (now - state.lastTyping > opts.typingThrottleMs) {
@@ -76,13 +90,28 @@ export function attach(textarea, dotnet, options) {
       const ack = await dotnet.invokeMethodAsync("OnLocalEdit", text, state.version);
       if (ack && ack.ok) {
         state.version = Math.max(state.version, ack.version);
+        if (!state.dirty && !state.resend) {
+          if (state.overwrote) {
+            state.overwrote = false;
+            setSync("conflict");
+            clearTimeout(state.conflictTimer);
+            state.conflictTimer = setTimeout(() => state.sync === "conflict" && setSync("synced"), 5000);
+          } else {
+            setSync("synced");
+          }
+        }
       } else if (ack && ack.retry) {
         state.dirty = true;
+        setSync("retry");
         schedule(800);
+      } else {
+        // Rejected (read-only, too long, session gone): the workspace explains why.
+        setSync(textarea.readOnly ? "readonly" : "synced");
       }
     } catch {
       // Circuit hiccup (reconnecting): keep the edit and try again shortly.
       state.dirty = true;
+      setSync("retry");
       schedule(1500);
     } finally {
       state.inFlight = false;
@@ -115,6 +144,7 @@ export function attach(textarea, dotnet, options) {
   function setReadOnly(readOnly) {
     textarea.readOnly = !!readOnly;
     textarea.setAttribute("aria-readonly", readOnly ? "true" : "false");
+    if (state) setSync(readOnly ? "readonly" : "synced");
   }
 
   function onVisibility() {
@@ -131,7 +161,11 @@ export function attach(textarea, dotnet, options) {
     applyRemote(text, version) {
       if (state.disposed || version <= state.version) return false;
       state.version = version;
-      if (state.dirty || state.inFlight) return false; // local edits win and are sent next
+      if (state.dirty || state.inFlight) {
+        // Local edits win and are sent next (last-write-wins): tell the user once it's done.
+        state.overwrote = true;
+        return false;
+      }
       replacePreservingCaret(text);
       updateCounts();
       return true;
@@ -154,6 +188,7 @@ export function attach(textarea, dotnet, options) {
     detach() {
       state.disposed = true;
       clearTimeout(state.timer);
+      clearTimeout(state.conflictTimer);
       textarea.removeEventListener("input", onInput);
       document.removeEventListener("visibilitychange", onVisibility);
     },

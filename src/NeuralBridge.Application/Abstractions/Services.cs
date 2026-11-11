@@ -36,7 +36,6 @@ public enum RateLimitPolicy
     CreateSession,
     JoinSession,
     DocumentUpdate,
-    LocationLookup,
     Authentication,
     CallSignal,
 }
@@ -83,10 +82,3 @@ public interface ISessionLockProvider
     Task<IAsyncDisposable> AcquireAsync(Guid sessionId, CancellationToken cancellationToken = default);
 }
 
-public sealed record GeoPlace(string? City, string? Region, string? Country, string? CountryCode);
-
-public interface IReverseGeocoder
-{
-    /// <summary>Returns <c>null</c> when the lookup is disabled, fails or finds nothing.</summary>
-    Task<GeoPlace?> ReverseAsync(double latitude, double longitude, CancellationToken cancellationToken = default);
-}

@@ -24,13 +24,13 @@
             <EditForm Model="Input" method="post" OnValidSubmit="LoginAsync" FormName="login" class="auth-form" novalidate>
                 <DataAnnotationsValidator />
                 <div class="field">
-                    <label class="field-label with-icon" for="login-email"><Icon Name="mail" /> Email</label>
+                    <label class="field-label" for="login-email">Email</label>
                     <InputText id="login-email" class="input" type="email" autocomplete="username" @bind-Value="Input.Email" data-testid="login-email" />
                     <ValidationMessage For="() => Input.Email" class="form-error" />
                 </div>
                 <div class="field">
                     <div class="field-row">
-                        <label class="field-label with-icon" for="login-password"><Icon Name="key-round" /> Password</label>
+                        <label class="field-label" for="login-password">Password</label>
                         @if (Providers.PasswordResetAvailable)
                         {
                             <a class="field-link" href="/account/forgot-password" data-testid="forgot-link">Forgot password?</a>
@@ -54,7 +54,7 @@
         {
             <span>New here? <a href="@($"/account/register?returnUrl={Uri.EscapeDataString(SafeReturn)}")">Create an account</a> · </span>
         }
-        <a href="/#start" data-testid="login-guest">Continue as guest</a>
+        <a href="/#create" data-testid="login-guest">Continue as guest</a>
     </Aside>
 </AccountShell>
 

@@ -41,7 +41,7 @@ test("owner can make guests read-only and remove a participant", async ({ browse
 
   await owner.page.getByRole("button", { name: "Remove Tablet" }).click();
   await owner.page.getByRole("alertdialog").getByRole("button", { name: "Remove" }).click();
-  await expect(guest.page.getByRole("heading", { name: "You've been removed" })).toBeVisible();
+  await expect(guest.page.getByRole("heading", { name: "You were removed from this session" })).toBeVisible();
   await expect(owner.page.getByTestId("participants")).not.toContainText("Tablet");
 });
 

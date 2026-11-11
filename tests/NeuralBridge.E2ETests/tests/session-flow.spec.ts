@@ -5,7 +5,7 @@ test("two devices create, join, sync both ways, copy and close", async ({ browse
   // 1–2. Open the landing page and create a guest session.
   const laptop = await newDevice(browser, baseURL!);
   await laptop.page.goto("/");
-  await expect(laptop.page.getByRole("heading", { level: 1 })).toHaveText("Your thoughts, instantly available on every screen.");
+  await expect(laptop.page.getByRole("heading", { level: 1 })).toHaveText("Move text between your devices in seconds.");
   const code = await createSession(laptop.page, { name: "Personal laptop" });
 
   // 3–4. Second browser context joins with the session code.

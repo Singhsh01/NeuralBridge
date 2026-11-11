@@ -6,9 +6,9 @@
     <a class="topbar-brand" href="/" aria-label="NeuralBridge home"><Logo /></a>
 
     <nav class="topbar-nav" aria-label="Main">
-        <NavLink class="nav-link" href="/join"><Icon Name="log-in" /> Join</NavLink>
-        <NavLink class="nav-link" href="/help"><Icon Name="circle-help" /> Help</NavLink>
-        <NavLink class="nav-link" href="/security"><Icon Name="shield-check" /> Security</NavLink>
+        <NavLink class="nav-link" href="/join">Join a session</NavLink>
+        <NavLink class="nav-link" href="/help">Help</NavLink>
+        <NavLink class="nav-link" href="/security">Security</NavLink>
     </nav>
 
     <div class="topbar-actions">
@@ -21,44 +21,38 @@
                 <AccountMenu User="context.User" />
             </Authorized>
             <NotAuthorized>
-                <div class="auth-actions" data-testid="signed-out-actions">
-                    <GoogleButton ButtonClass="btn-sm" ReturnUrl="@ReturnPath" Class="nav-google" />
-                    @if (Providers.LocalAccountsAvailable)
-                    {
+                @if (Providers.AccountsAvailable)
+                {
+                    <div class="auth-actions" data-testid="signed-out-actions">
                         <a class="btn btn-quiet btn-sm" href="@($"/account/login?returnUrl={Uri.EscapeDataString(ReturnPath)}")" data-testid="nav-login">Log in</a>
-                        <a class="btn btn-quiet btn-sm" href="/account/register" data-testid="nav-register">Create account</a>
-                    }
-                    <a class="btn btn-link btn-sm" href="/#create-name" data-testid="nav-guest" data-tip="No account needed: create or join a session right away">Continue as guest</a>
-                </div>
+                        @if (Providers.LocalAccountsAvailable)
+                        {
+                            <a class="btn btn-secondary btn-sm" href="/account/register" data-testid="nav-register">Create account</a>
+                        }
+                    </div>
+                }
             </NotAuthorized>
         </AuthorizeView>
 
-        @* Small screens: one menu with everything above. *@
+        @* Small screens: the navigation and sign-in links in one menu. *@
         <details class="mobile-menu" data-menu>
-            <summary class="icon-btn" aria-label="Open menu" data-tip="Menu"><Icon Name="menu" /></summary>
-            <div class="menu glass" role="menu">
+            <summary class="icon-btn" aria-label="Open menu"><Icon Name="menu" /></summary>
+            <div class="menu" role="menu">
+                <a role="menuitem" href="/"><Icon Name="plus" /> Create a session</a>
                 <a role="menuitem" href="/join"><Icon Name="log-in" /> Join a session</a>
                 <a role="menuitem" href="/help"><Icon Name="circle-help" /> Help</a>
                 <a role="menuitem" href="/security"><Icon Name="shield-check" /> Security</a>
                 <AuthorizeView>
-                    <Authorized>
-                        <hr />
-                        <a role="menuitem" href="/account/sessions"><Icon Name="history" /> My sessions</a>
-                        <a role="menuitem" href="/account/settings"><Icon Name="settings" /> Account settings</a>
-                        <form method="post" action="/account/logout">
-                            <AntiforgeryToken />
-                            <button type="submit" role="menuitem"><Icon Name="log-out" /> Log out</button>
-                        </form>
-                    </Authorized>
                     <NotAuthorized>
-                        <hr />
-                        @if (Providers.LocalAccountsAvailable)
+                        @if (Providers.AccountsAvailable)
                         {
-                            <a role="menuitem" href="/account/login"><Icon Name="key-round" /> Log in</a>
-                            <a role="menuitem" href="/account/register"><Icon Name="user-plus" /> Create account</a>
+                            <hr />
+                            <a role="menuitem" href="@($"/account/login?returnUrl={Uri.EscapeDataString(ReturnPath)}")"><Icon Name="key-round" /> Log in</a>
+                            @if (Providers.LocalAccountsAvailable)
+                            {
+                                <a role="menuitem" href="/account/register"><Icon Name="user-plus" /> Create account</a>
+                            }
                         }
-                        <a role="menuitem" href="/#create-name"><Icon Name="user" /> Continue as guest</a>
-                        <GoogleButton ButtonClass="btn-sm" ReturnUrl="@ReturnPath" Class="menu-google" />
                     </NotAuthorized>
                 </AuthorizeView>
             </div>

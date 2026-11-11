@@ -3,18 +3,22 @@
 
 <PageTitle>Join a session · NeuralBridge</PageTitle>
 
-<div class="page-narrow">
-    <section class="card glass form-card" aria-labelledby="join-title">
-        <div class="card-head">
-            <span class="card-icon card-icon-alt" aria-hidden="true"><Icon Name="log-in" /></span>
-            <div>
-                <h1 id="join-title" class="page-title">Join a session</h1>
-                <p class="card-sub">Enter the session ID shown on your other device. If the owner set a PIN, you'll need that too.</p>
-            </div>
-        </div>
+<div class="page-form">
+    <section class="card form-card" aria-labelledby="join-title">
+        <h1 id="join-title" class="form-card-title">Join a session</h1>
+        <p class="form-card-sub">
+            @if (string.IsNullOrWhiteSpace(Code))
+            {
+                <span>Enter the session ID shown on the other device. If the session has a PIN, you'll need that too.</span>
+            }
+            else
+            {
+                <span>The session ID is filled in from the link. Add the PIN if the session has one.</span>
+            }
+        </p>
         <JoinForm Code="@Code" @rendermode="InteractiveServer" />
     </section>
-    <p class="page-aside">Want your own instead? <a href="/#start">Create a session</a>.</p>
+    <p class="page-aside">Want your own instead? <a href="/#create">Create a session</a></p>
 </div>
 
 @code {

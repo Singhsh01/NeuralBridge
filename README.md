@@ -9,11 +9,15 @@ NeuralBridge is **not** remote desktop. It never transmits your screen, never co
 another computer, never reads the clipboard in the background and never captures keystrokes
 outside its own editor.
 
-![Landing page](docs/screenshots/landing-dark.png)
+![Landing page](docs/screenshots/landing-light.png)
 
-| Workspace with a video call (signed in) | Guest on a phone (light theme) |
+| A new session, ready to share (light) | Workspace with a video call (dark, signed in) |
 |---|---|
-| ![Owner workspace](docs/screenshots/workspace-owner-dark.png) | ![Guest on mobile](docs/screenshots/workspace-guest-mobile-light.png) |
+| ![New session with QR code](docs/screenshots/workspace-share-light.png) | ![Owner workspace](docs/screenshots/workspace-owner-dark.png) |
+
+| Guest on a phone | Landing on a phone (dark) |
+|---|---|
+| ![Guest on mobile](docs/screenshots/workspace-guest-mobile-light.png) | ![Landing on mobile](docs/screenshots/landing-mobile.png) |
 
 | Log in | Account menu | My sessions |
 |---|---|---|
@@ -45,14 +49,16 @@ The screenshots use Chromium's fake camera (green test pattern) and the mock Goo
 ## Features
 
 - **Guest sessions with no account.** One click creates a session with a CSPRNG join code (`7KQ4-M2XD-9PHT`) and a shareable link. Optional device name, optional PIN, and a lifetime of 15 min, 1 h (default), 8 h or 24 h.
-- **Join by code or link** from any modern desktop or mobile browser. Friendly states for invalid, expired, closed, wrong PIN, full and connection-lost.
-- **Real-time shared editor.** Edits are debounced in the browser (not one request per keystroke), last-write-wins with versioning, "someone is editing" indicator, character and word counts, last-synced time, automatic URL detection (links open only on click), clear with confirmation, and copy to clipboard on an explicit click.
-- **Presence:** connected devices, online count and connection status, with automatic reconnect.
+- **Join by code, link or QR code** from any modern desktop or mobile browser. The QR code encodes only the public join link (`/join/{ID}`), never the PIN or a participant token, and is drawn in the browser. Friendly states for invalid, expired, closed, wrong PIN, full and connection-lost.
+- **Real-time shared editor.** Edits are debounced in the browser (not one request per keystroke), last-write-wins with versioning, "someone is editing" indicator, character and word counts, last-synced time, automatic URL detection (links open only on click), clear with confirmation, copy to clipboard on an explicit click (with a select-and-copy fallback when the browser blocks the clipboard), and **Download** as a `.txt` file generated locally in the browser.
+- **Presence and sync status:** connected devices and online count, plus one status pill that says what is actually true: *Synced*, *Saving…*, *Waiting to send*, *Your edit replaced a newer one* (last-write-wins conflict), *Read-only*, *Reconnecting* or *Offline*. It never shows success for an edit the server hasn't acknowledged.
+- **Ending-soon warning:** five minutes before a session ends, everyone sees a banner; the owner can extend it in one click.
+- **Keyboard shortcuts** (press `?` in a session): Ctrl/⌘+Enter copies everything; outside text fields, `E` focuses the editor, `C` copies, `L` copies the join link, `D` downloads. Single keys never fire while you type, and browser and editor shortcuts are left alone.
 - **Owner controls:** close, extend (+15 min / +1 h, capped), remove a device, guest read-only mode, rotate the join code, require/change/remove a PIN.
 - **Audio and video calls** inside a session: device-to-device WebRTC (mesh, up to 6 people by default) with mute, camera on/off, speaking indicators and leave; signaling is relayed only between members of the same session's call.
-- **Optional accounts, never required.** *Continue with Google* (OAuth 2.0 authorization code + PKCE), or email and password with forgot/reset password. Signed-in users get an avatar menu, **My sessions** (running sessions plus history, if they keep it), **Saved** text, and **Account settings** (profile, connect/disconnect Google, password, history on/off, sign out everywhere, delete account). *Continue as guest* is always one click away.
-- **Interface:** a full-screen wallpaper (the violet sculpture) with refraction, shimmer, particles, slow parallax and a readability gradient; frosted glass panels; one icon set (Lucide) with hover, focus, active, disabled and status states; local time and date, and the city only after you allow location.
-- Dark and light themes, reduced-motion support, keyboard and touch accessible, responsive from 320 px.
+- **Optional accounts, never required.** *Continue with Google* (OAuth 2.0 authorization code + PKCE), or email and password with forgot/reset password. Signed-in users get an avatar menu, **My sessions** (running sessions plus history, if they keep it), **Saved** text, and **Account settings** (profile, connect/disconnect Google, password, history on/off, sign out everywhere, delete account). Creating or joining a session never needs one.
+- **Interface:** a calm, solid-colour design system (Instrument Sans for the interface, JetBrains Mono for the editor and codes, one cobalt accent, Lucide icons). The editor takes most of the workspace; sharing, call, people and owner controls sit in collapsible side panels that start closed on phones.
+- Light and dark themes that follow the system until you pick one (remembered in this browser), reduced-motion support, visible focus, keyboard and touch accessible, responsive from 320 px.
 
 ## Prerequisites
 
@@ -162,11 +168,7 @@ clear message.
 | `NeuralBridge:RateLimits` | `CreateSessionPerMinute` | `10` | Per client IP |
 | | `JoinSessionPerMinute` | `20` | Per client IP, failed attempts included |
 | | `DocumentUpdatesPerSecond` | `10` | Per participant (token bucket) |
-| | `LocationLookupsPerMinute` | `5` | Per client IP |
 | | `HttpRequestsPerMinute` | `600` | Global per-IP HTTP limiter |
-| `NeuralBridge:Location` | `ReverseGeocodingEnabled` | `true` | When `false`, shows rounded coordinates only |
-| | `ReverseGeocodingEndpoint` | Nominatim | Any Nominatim-compatible HTTPS endpoint |
-| | `UserAgent` | placeholder | **Set a contact address** (Nominatim usage policy) |
 | `NeuralBridge:Hosting` | `HttpsRedirection` | `true` | Disable behind a TLS-terminating proxy |
 | | `ForwardedHeadersEnabled` | `false` | Only behind a trusted reverse proxy |
 | | `DataProtectionKeysPath` | empty | Persist keys (required in containers or multi-restart setups) |
@@ -204,7 +206,6 @@ export ConnectionStrings__PostgreSql="Host=db;Database=neuralbridge;Username=nb;
 export Authentication__Google__ClientId=...
 export Authentication__Google__ClientSecret=...
 export NeuralBridge__Hosting__DataProtectionKeysPath=/var/lib/neuralbridge/keys
-export NeuralBridge__Location__UserAgent="NeuralBridge/1.0 (admin@example.org)"
 ```
 
 On Windows PowerShell, use `$env:NeuralBridge__Persistence__Provider = "PostgreSql"`.
@@ -366,14 +367,14 @@ It covers:
 - Google (mock): the challenge parameters (client ID, redirect URI, S256, scopes, state, no secret), sign-in → avatar/name in the nav → reload → account menu → log out, cancelled sign-in, forged callback, external return URL ignored, no automatic linking to a password account, My sessions with history and clear history; credentials never appear in pages or `/api/auth/providers`
 - email accounts: register, log out, wrong password, log in; forgot password → dev outbox link → reset → log in (same response for unknown emails); delete account with confirmation, which also ends its running sessions for guests
 - calls: two contexts join a PIN-protected session, connect audio/video (real `RTCPeerConnection`s), decoded remote video, mute (red, slashed icon, shown to the other side), camera off, leave releases the camera
-- wallpaper format and orientation, no layout shift, reduced motion, copy → check icon, keyboard tooltips, *Continue as guest* focusing the create form, guest Exit, and every same-origin link resolving
-
+- copy → check icon, keyboard tooltips, the nav's join link, guest Exit, and every same-origin link resolving
+- the workspace features: the QR code (encodes exactly `/join/{ID}`, no PIN or token, and the link prefills the join form), Download (file name and exact contents, no network request), the status pill (pending → synced), shortcuts (Ctrl/⌘+Enter, `?`, `E`, and no stolen keys while typing), the ending-soon banner and one-click extend (using an extra 5-minute session length configured only for the tests), phone layout with collapsed panels, and both themes
 
 - the 11-step brief flow: landing, create, a second context joins, type both ways, copy, close, both see the closed state
 - debounced typing, clear-with-confirmation, reload resilience, joining without credentials
 - PIN rejection with the anti-enumeration message, code rotation, read-only guests, removing a device
 - an XSS payload stays inert, plus the security headers
-- local time without a location prompt, location after click (granted and declined), the theme toggle, no horizontal scroll at 320, 375 and 768 px, keyboard creation
+- the landing page: no wallpaper, location prompt or decorative layers (and none of their files requested), create visible without scrolling, hero buttons switching the create/join tabs and focusing the first field, arrow keys between tabs, system light/dark, the theme toggle, no horizontal scroll at 320, 375 and 768 px, keyboard creation
 - the JSON API and the SignalR hub via the official JS client: cross-session isolation, no echo to the sender, credentials required, end-of-session notification
 
 HTML report: `npx playwright show-report`.
@@ -405,7 +406,7 @@ src/
   NeuralBridge.Application     Use cases, ports, DTOs, options (no infrastructure)
   NeuralBridge.Infrastructure  CSPRNG codes, PBKDF2, tokens, rate limiter, in-memory realtime
                                state, EF Core (SQLite/PostgreSQL) + in-memory stores, Identity user,
-                               Nominatim geocoder, cleanup hosted service
+                               cleanup hosted service
   NeuralBridge.Web             Blazor Web App (Interactive Server), SignalR hub, minimal APIs,
                                auth endpoints, security middleware, design system (wwwroot)
 tests/
@@ -437,7 +438,8 @@ See [`docs/SECURITY.md`](docs/SECURITY.md) for the threat model. Highlights:
 - **Anti-enumeration:** an unknown code, a missing PIN and a wrong PIN all give the same answer.
 - **Browser hardening:** strict CSP (`script-src 'self'`, no inline script), `frame-ancestors 'none'`, `no-referrer`, `nosniff`, `no-store`, HSTS, and secure cookies.
 - **Untrusted content:** shared text is plain text. HTML is never rendered, and links are http/https only and open on click.
-- **Location:** requested only on click, rounded to about 1 km, never stored.
+- **No location, no tracking:** the app never asks for location (`Permissions-Policy: geolocation=()`), and loads no third-party fonts or scripts.
+- **QR codes and downloads** are generated in the browser. The QR code holds only the public join link; the downloaded file never touches the server.
 
 ## Troubleshooting
 
@@ -447,7 +449,7 @@ See [`docs/SECURITY.md`](docs/SECURITY.md) for the threat model. Highlights:
 | Startup fails with `OptionsValidationException` | A configuration value is out of range. The message names the key. |
 | `SQLite Error 1: no such table` after adding migrations | Delete `src/NeuralBridge.Web/data/neuralbridge.db` once (it was created by `EnsureCreated`) |
 | "Copy failed" on a phone over `http://192.168…` | Browsers restrict the clipboard on insecure origins. Use HTTPS, or select and copy manually. |
-| City never appears | The server can't reach the geocoder (firewall), or `ReverseGeocodingEnabled=false`. Rounded coordinates are shown instead. |
+| "Press Ctrl+C" appears after Copy | The browser blocked clipboard access (insecure origin or permissions). The text is selected for you; press Ctrl/⌘+C. |
 | Google button disabled ("Google sign-in is not configured.") | The server has no `Authentication:Google:ClientId`/`ClientSecret`. See [Google sign-in](#google-sign-in-optional). The startup log says which. |
 | `redirect_uri_mismatch` from Google | Register exactly the URI printed in the startup log (`Authorized redirect URI(s) to register for this host: ...`). Scheme, host, port and path must match. |
 | "Google sign-in didn't complete" | The correlation cookie was lost (an `http` origin with `HttpsRedirection=true` in Production, or a proxy without `ForwardedHeadersEnabled`), or the client secret is wrong. The server log has the reason, never the secret. |
@@ -464,18 +466,21 @@ See [`docs/SECURITY.md`](docs/SECURITY.md) for the threat model. Highlights:
 - **No committed EF migrations.** The project was generated in an environment without NuGet access, so `dotnet ef` couldn't run. Generate them with `scripts/add-initial-migration.*`. Until then, the schema is created with `EnsureCreated`. Migrations are provider-specific: keep a separate set (or migrations assembly) per provider if you use both SQLite and PostgreSQL.
 - **Guest ownership is per tab.** Closing the owner's tab loses owner controls for a guest session (the session continues until it expires). Signed-in owners can reopen from **My sessions**.
 - **Server-visible content.** Content is encrypted in transit (HTTPS) but is processed in server memory. It is not end-to-end encrypted.
-- **One shared document per session.** There are no tabs or history.
+- **One shared document per session.** There are no tabs or history. A multi-document design is sketched in [`docs/ROADMAP.md`](docs/ROADMAP.md).
+- **QR scanning needs the other device to reach this host.** A QR code for `http://localhost:…` won't open on a phone; use the `lan` profile or a real host name.
 - **Calls are a mesh.** Each person sends their stream to every other person, so calls are capped at 6 by default. Larger calls need an SFU. Calls without a TURN server fail on some restrictive networks.
 - **Real Google sign-in is verified against a mock provider in automated tests.** The production endpoints are Google's published ones; running it against a real Google account needs the operator's own OAuth client.
 
 ## Roadmap
 
+[`docs/ROADMAP.md`](docs/ROADMAP.md) has an assessment of each item (value, risk, effort and what it would touch):
+
+- A read-only code view with syntax highlighting, and an owner activity panel from the existing `SessionEvent` data
+- Several documents per session (proposal)
+- A CRDT or OT merge strategy with cursor presence
 - End-to-end encryption, with the key carried in the URL fragment so it never reaches the server
-- A CRDT (e.g. Yjs-compatible) merge strategy with cursor and selection presence
-- Redis backplane and store for horizontal scale
-- QR code for the join link
-- File and image snippets with size limits and malware scanning
-- A per-session activity log for owners (from the existing `SessionEvent` audit data)
+- Redis backplane and store for horizontal scale, and a TURN server for restrictive networks
+- File and image sharing with size limits and malware scanning
 - Passkeys or other optional sign-in providers
 - A CLI client on the existing `/api/sessions` and `/hubs/session` endpoints
 
@@ -497,10 +502,12 @@ cd tests/NeuralBridge.E2ETests && NB_BASE_URL=http://127.0.0.1:5243 node scripts
 ```
 
 The script writes the landing page (dark, light, phone), log in, the account menu, My
-sessions, Account settings, the owner and guest workspaces in a video call, and the
-closed-session state. (These fake values only work against the mock provider.)
+sessions, Account settings, a new session with its QR code, the owner and guest workspaces
+in a video call, and the closed-session state. (These fake values only work against the mock provider.)
 
 ## License
 
 Fonts are bundled under the SIL Open Font License (see `src/NeuralBridge.Web/wwwroot/fonts/LICENSES.md`).
+Icons are from Lucide (ISC, `wwwroot/icons/lucide.svg`, rebuilt with `scripts/build-icons.mjs`). The QR encoder is
+qrcode-generator by Kazuhiko Arase (MIT, `wwwroot/js/vendor/`).
 Choose and add a license for the application code before publishing.

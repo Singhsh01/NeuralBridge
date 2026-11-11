@@ -27,14 +27,16 @@ This document describes what NeuralBridge protects, how, and where the limits ar
 | Accounts | Data left behind on deletion | Deleting an account closes its running sessions (everyone is disconnected and the text purged), deletes history and saved text, then the user | `AccountDataService.DeleteAllAsync` |
 | Calls | Eavesdropping / joining another session's call | Media is DTLS-SRTP between browsers; signaling goes only through the authenticated circuit and only between members of the same session's call; per-participant rate and size limits | `CallService.SignalAsync` |
 | Calls | Camera/microphone used unexpectedly | Requested only on an explicit *Join* click; `Permissions-Policy` allows them only for this origin; tracks are stopped on leave, session end, removal and page hide | `call.js`, `SecurityHeadersMiddleware` |
+| Join link | PIN or token leaking through the QR code | The QR code is generated in the browser from the public join link (`/join/{ID}`) only; it never contains the PIN, the workspace URL or a participant token. Scanning it still requires the PIN on PIN-protected sessions | `SharePanel.razor`, `site.js` (`renderQr`) |
+| Shared text | Export leaking to the server or a third party | *Download* builds a `Blob` from the editor's current value in the browser; no request is made. Copy and download run only on an explicit click or shortcut | `site.js` (`download`, `copyFrom`) |
+| Device | Location tracking | The app never requests location; `Permissions-Policy: geolocation=()` | `SecurityHeadersMiddleware` |
 | Cookies | Theft / CSRF | `HttpOnly`; `Secure` outside Development; `SameSite=Lax` (needed for the OAuth return) | `AuthenticationSetup` |
 | Service | Resource exhaustion | Content cap (50k chars, client + server); 512 KB message limits; global per-IP HTTP limiter; per-participant update token bucket | options + `WebApplicationSetup` |
-| Location | Over-collection | Requested only on click; rounded to about 1 km; lookup made server-side; never stored or logged; can be disabled | `LocalTimeCard.razor`, `LocationDisplayService` |
 
 ## Logging policy
 
 Logs carry internal session and participant GUIDs, outcomes and counts. They **never** contain
-document text, join codes, PINs, tokens, IP addresses or coordinates. When adding log
+document text, join codes, PINs, tokens or IP addresses. When adding log
 statements, keep it that way.
 
 ## Operational notes
@@ -54,5 +56,5 @@ bypass organizational security controls.
 ## Known gaps (accepted for the MVP)
 
 - An unprotected session's code is a bearer secret. Anyone who sees it can join until the owner rotates it or the session ends. The UI says so, and nudges owners to add a PIN.
-- Content is end-to-end encrypted **in transit** (TLS) but is visible to the server process while the session runs. True end-to-end encryption, with keys in the link fragment, is on the roadmap.
+- Content is encrypted **in transit** (TLS) but is visible to the server process while the session runs. NeuralBridge is **not** end-to-end encrypted. A design for that (keys in the link fragment) is assessed in `docs/ROADMAP.md`.
 - A removed participant who still knows the code can rejoin. The removal dialog tells the owner to rotate the code or set a PIN.

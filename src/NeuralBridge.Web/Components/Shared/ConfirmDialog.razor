@@ -2,7 +2,7 @@
 @if (Open)
 {
     <div class="dialog-backdrop" @onclick="CancelAsync"></div>
-    <div class="dialog glass" role="alertdialog" aria-modal="true" aria-labelledby="@_titleId" aria-describedby="@_bodyId" @onkeydown="OnKeyDown">
+    <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="@_titleId" aria-describedby="@_bodyId" @onkeydown="OnKeyDown">
         <h2 id="@_titleId" class="dialog-title">@Title</h2>
         <div id="@_bodyId" class="dialog-body">@ChildContent</div>
         <div class="dialog-actions">

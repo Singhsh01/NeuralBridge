@@ -52,7 +52,7 @@ public sealed class SecurityHeadersMiddleware
             // Join links carry the session code. Never leak it via Referer to sites opened from shared text.
             headers["Referrer-Policy"] = "no-referrer";
             // Camera and microphone are needed for calls, and only ever requested after a click.
-            headers["Permissions-Policy"] = "geolocation=(self), clipboard-write=(self), camera=(self), microphone=(self), display-capture=(), payment=(), usb=(), interest-cohort=()";
+            headers["Permissions-Policy"] = "geolocation=(), clipboard-write=(self), camera=(self), microphone=(self), display-capture=(), payment=(), usb=(), interest-cohort=()";
             headers["Cross-Origin-Opener-Policy"] = "same-origin";
             headers["Cross-Origin-Resource-Policy"] = "same-origin";
 

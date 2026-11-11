@@ -51,53 +51,17 @@ test("audio and video calls connect between two devices, with working controls",
   expect(phone.consoleErrors).toEqual([]);
 });
 
-test("the wallpaper loads in a modern format with a placeholder and no layout shift", async ({ browser, baseURL }) => {
-  const d = await newDevice(browser, baseURL!, { viewport: { width: 1440, height: 900 } });
-  await d.page.addInitScript(() => {
-    (window as unknown as { __cls: number }).__cls = 0;
-    new PerformanceObserver((list) => {
-      for (const e of list.getEntries() as unknown as { value: number; hadRecentInput: boolean }[]) {
-        if (!e.hadRecentInput) (window as unknown as { __cls: number }).__cls += e.value;
-      }
-    }).observe({ type: "layout-shift", buffered: true });
-  });
-  await d.page.goto("/");
-  await expect(d.page.locator(".backdrop")).toHaveClass(/is-loaded/);
-  const img = await d.page.locator(".backdrop img").evaluate((i: HTMLImageElement) => ({ src: i.currentSrc, w: i.naturalWidth }));
-  expect(img.src).toMatch(/wallpaper-landscape-\d+\.[a-z0-9]+\.(avif|webp)$/);
-  expect(img.w).toBeGreaterThan(1000);
-  expect(await d.page.locator(".backdrop img").evaluate((i) => getComputedStyle(i).objectFit)).toBe("cover");
-  expect(await d.page.evaluate(() => (window as unknown as { __cls: number }).__cls)).toBeLessThan(0.05);
-
-  const portrait = await newDevice(browser, baseURL!, { viewport: { width: 390, height: 844 }, isMobile: true });
-  await portrait.page.goto("/");
-  await expect(portrait.page.locator(".backdrop")).toHaveClass(/is-loaded/);
-  expect(await portrait.page.locator(".backdrop img").evaluate((i: HTMLImageElement) => i.currentSrc)).toMatch(/wallpaper-portrait-/);
-});
-
-test("reduced motion turns off the animated layers", async ({ browser, baseURL }) => {
-  const d = await newDevice(browser, baseURL!, { reducedMotion: "reduce" });
-  await d.page.goto("/");
-  const animated = await d.page.evaluate(() =>
-    [...document.querySelectorAll(".backdrop *")].filter((el) => {
-      const s = getComputedStyle(el);
-      return s.animationName !== "none" && parseFloat(s.animationDuration) > 0.01;
-    }).length,
-  );
-  expect(animated).toBe(0);
-});
-
 test("copy buttons turn into a check, and tooltips work with the keyboard", async ({ browser, baseURL }) => {
   const d = await newDevice(browser, baseURL!);
   const code = await createSession(d.page);
-  const copy = d.page.getByRole("button", { name: "Copy session ID" });
+  const copy = d.page.getByRole("button", { name: "Copy session ID" }).first();
   await copy.click();
   await expect(copy.locator("use").first()).toHaveAttribute("href", /#check$/);
   expect(await d.page.evaluate(() => navigator.clipboard.readText())).toBe(code);
 
   // Keyboard: Tab onto the Exit button (focus-visible) shows its tooltip; Escape hides it.
   await d.page.mouse.move(0, 0);
-  await d.page.getByTestId("connection-status").focus();
+  await d.page.getByRole("button", { name: "Keyboard shortcuts" }).focus();
   await d.page.keyboard.press("Tab");
   await expect(d.page.getByTestId("exit-session")).toBeFocused();
   await expect(d.page.locator(".tooltip")).toHaveText("Leave this session");
@@ -106,11 +70,12 @@ test("copy buttons turn into a check, and tooltips work with the keyboard", asyn
   await expect(d.page.locator(".tooltip")).toBeHidden();
 });
 
-test("Continue as guest puts the cursor in the create form", async ({ browser, baseURL }) => {
+test("the nav's Join link opens the join form", async ({ browser, baseURL }) => {
   const d = await newDevice(browser, baseURL!, { viewport: { width: 1440, height: 900 } });
   await d.page.goto("/help");
-  await d.page.getByTestId("nav-guest").click();
-  await expect(d.page.locator("#create-name")).toBeFocused();
+  await d.page.locator(".topbar").getByRole("link", { name: "Join a session" }).click();
+  await d.page.waitForURL(/\/join$/);
+  await expect(d.page.getByTestId("join-code")).toBeVisible();
 });
 
 test("guests can exit a session from the workspace", async ({ browser, baseURL }) => {

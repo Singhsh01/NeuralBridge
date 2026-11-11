@@ -1,12 +1,11 @@
 @inherits LayoutComponentBase
+@* The session workspace: same top bar, no footer, so the editor can use the full height. *@
 
 <a class="skip-link" href="#main">Skip to content</a>
-<Backdrop Full="true" />
-<div class="app-shell is-landing">
+<div class="app-shell is-workspace">
     <NavBar />
     <main id="main" class="app-main" tabindex="-1">
         @Body
     </main>
-    <SiteFooter />
 </div>
 <BlazorErrorUi />

@@ -5,7 +5,7 @@
 @inject ToastService Toasts
 @inject ILogger<CallPanel> Logger
 
-<section class="call @(_inCall ? "is-active" : null) @(OthersInCall && !_inCall ? "is-incoming" : null)" aria-labelledby="call-title" data-testid="call-panel">
+<section class="panel call @(_inCall ? "is-active" : null) @(OthersInCall && !_inCall ? "is-incoming" : null)" aria-labelledby="call-title" data-testid="call-panel">
     <div class="call-bar">
         <div class="call-bar-text">
             <h2 id="call-title" class="call-title">
@@ -20,41 +20,41 @@
                 }
                 else
                 {
-                    <span>Talk while you share</span>
+                    <span>Call</span>
                 }
             </h2>
             @if (!_inCall && !OthersInCall)
             {
-                <p class="call-hint">Start an audio or video call with everyone in this session. Media goes directly between devices.</p>
+                <p class="call-hint">Talk with everyone in this session. Audio and video go directly between devices.</p>
             }
         </div>
 
         <div class="call-controls" role="group" aria-label="Call controls">
             @if (!_inCall)
             {
-                <button type="button" class="btn btn-call @(OthersInCall ? "is-ringing" : null)" disabled="@_busy" @onclick="() => JoinAsync(false)"
+                <button type="button" class="btn btn-sm @(OthersInCall ? "btn-primary is-ringing" : "btn-secondary")" disabled="@_busy" @onclick="() => JoinAsync(false)"
                         data-tip="@(OthersInCall ? "Join the call with your microphone" : "Start an audio call")" data-testid="call-audio">
-                    <Icon Name="phone" /><span class="btn-label">@(OthersInCall ? "Join with audio" : "Audio call")</span>
+                    <Icon Name="phone" /><span class="btn-label">@(OthersInCall ? "Join with audio" : "Audio")</span>
                 </button>
-                <button type="button" class="btn btn-quiet" disabled="@_busy" @onclick="() => JoinAsync(true)"
+                <button type="button" class="btn btn-secondary btn-sm" disabled="@_busy" @onclick="() => JoinAsync(true)"
                         data-tip="@(OthersInCall ? "Join the call with camera and microphone" : "Start a video call")" data-testid="call-video">
-                    <Icon Name="video" /><span class="btn-label">@(OthersInCall ? "Join with video" : "Video call")</span>
+                    <Icon Name="video" /><span class="btn-label">@(OthersInCall ? "Join with video" : "Video")</span>
                 </button>
             }
             else
             {
-                <button type="button" class="icon-btn @(_micOn ? "is-on" : "is-muted")" data-mic-level aria-pressed="@(_micOn ? "true" : "false")"
+                <button type="button" class="icon-btn icon-btn-outline @(_micOn ? "is-on" : "is-muted")" data-mic-level aria-pressed="@(_micOn ? "true" : "false")"
                         aria-label="@(_micOn ? "Mute microphone" : "Unmute microphone")" data-tip="@(_micOn ? "Mute microphone" : "Unmute microphone")"
                         @onclick="ToggleMicAsync" disabled="@_busy" data-testid="call-mic">
                     <Icon Name="@(_micOn ? "mic" : "mic-off")" />
                 </button>
-                <button type="button" class="icon-btn @(_camOn ? "is-on is-video" : null)" aria-pressed="@(_camOn ? "true" : "false")"
+                <button type="button" class="icon-btn icon-btn-outline @(_camOn ? "is-on is-video" : null)" aria-pressed="@(_camOn ? "true" : "false")"
                         aria-label="@(_camOn ? "Turn camera off" : "Turn camera on")" data-tip="@(_camOn ? "Turn camera off" : "Turn camera on")"
                         @onclick="ToggleCameraAsync" disabled="@_busy" data-testid="call-camera">
                     <Icon Name="@(_camOn ? "video" : "video-off")" />
                 </button>
-                <button type="button" class="btn btn-end" @onclick="LeaveAsync" disabled="@_busy" data-tip="Leave the call (the session keeps running)" data-testid="call-leave">
-                    <Icon Name="phone-off" /><span class="btn-label">Leave call</span>
+                <button type="button" class="btn btn-danger btn-sm btn-end" @onclick="LeaveAsync" disabled="@_busy" data-tip="Leave the call (the session keeps running)" data-testid="call-leave">
+                    <Icon Name="phone-off" /><span class="btn-label">Leave</span>
                 </button>
             }
         </div>
