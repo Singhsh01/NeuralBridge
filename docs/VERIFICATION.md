@@ -48,13 +48,27 @@ body text, muted text, accent buttons, links, success, warning and danger all re
 both themes; the dark accent was darkened from `#5b6cf0` (4.33:1 with white) to `#5262ea`
 (4.89:1) and placeholders moved from the faint to the muted colour as a result.
 
-## 2. macOS (previous release)
+## 2. macOS with the real packages (this release)
 
-The previous release was verified on the Mac with `scripts/verify-mac.sh`
-(`Run-Verification.command`): restore, build, format, 188 unit tests, a SQLite smoke test,
-40 E2E tests plus the no-Google run on SQLite. **This release has not been run on the Mac
-yet** (the computer was not reachable from the session at the end of the work). Run
-`Run-Verification.command` once to confirm; the expected results are the counts in section 1.
+`scripts/verify-mac.sh` (double-click `Run-Verification.command`) on a MacBook Air (arm64),
+macOS 27.0.1, .NET SDK 10.0.401, packages restored from nuget.org. Logs in `verify-logs/`.
+
+The first run stopped at restore: NuGet audit (warnings as errors) flagged
+`System.Security.Cryptography.Pkcs` 9.0.0, pulled in by `Microsoft.EntityFrameworkCore.Design`
+through `Microsoft.Build.Tasks.Core`, for two advisories published since the last release
+(GHSA-846f-f764-76mx, high; GHSA-2fmv-rv2c-59x7, moderate). It is design-time only, but the
+build is right to refuse it. `Directory.Packages.props` now pins the fixed 10.0.13 (transitive
+pinning is on). The second run, unchanged otherwise:
+
+| Step | Result |
+|---|---|
+| 01-restore | exit 0 |
+| 02-build (warnings as errors) | 0 warnings, 0 errors |
+| 03-format `--verify-no-changes` | exit 0 |
+| 04-unit-tests | **182 passed, 0 failed** |
+| 05-sqlite-smoke (SQLite, health, create/join with PIN) | exit 0 |
+| 06-e2e-playwright (full suite, mock Google, in-memory) | **46 passed, 1 skipped** |
+| 07-e2e-sqlite-accounts-no-google (`auth.spec.ts` + `security-and-owner.spec.ts` on SQLite) | **10 passed, 8 skipped** (the Google tests) |
 
 ## 3. Not verified
 
